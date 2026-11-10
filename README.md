@@ -1,62 +1,65 @@
-# NewClient
+# ZERØ
 
 A **strictly client-side** utility client for **Fabric 1.21.11**, made for finding ores and locating bases on anarchy servers like 2b2t.
 
-> **Zero server interaction.** NewClient never sends a packet, never registers a network channel and never interacts with the server.
+> **Zero server interaction.** ZERØ never sends a packet, never registers a network channel and never interacts with the server.
 > It only reads what the server already sends to every client (chunks, entities, tab list) and draws on your screen.
-> Anything that would need to talk to the server is not included.
 
-![ESP, SusChunk, BaseFinder and Freecam in game](docs/esp_freecam.png)
+## Download
+
+**[⬇ Latest ZERØ jar](https://github.com/PlumedeParis/NewClient/releases/latest)**: built automatically by GitHub Actions on every push.
+
+Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `zero-x.y.z.jar` in `.minecraft/mods`, then press **Right Shift** in game.
+
+![ZERØ in game: StorageESP, BaseFinder, SusChunk, BlockESP seen from Freecam](docs/overview.png)
 
 ## Modules
 
 | Module | Category | What it does |
 |---|---|---|
-| **BlockESP** | Render | Highlights chosen blocks (diamonds, debris, emeralds, spawners...) through walls. Per-block colors, box/outline/fill styles, tracers, labels, range fade. Pick blocks from a searchable grid with item icons and presets (Ores / Valuables / Storage). |
-| **Freecam** | Render | Moves only the camera. Your player stays still and keeps sending exactly the same packets as an AFK player. Attack/use/pick-block are blocked while it is on, so nothing can be sent from the camera's view. Smooth cinematic flight, sprint boost, outline of your real position, auto-disables if you take damage. |
-| **BaseFinder** | World | Scores every loaded chunk for player-made blocks and entities (shulkers, ender chests, beacons, signs, redstone, concrete, item frames, armor stands, chest boats...) and detects **stashes** (many storage blocks in a chunk). Natural structures such as villages, dungeons, bastions, fortresses, ancient cities, end cities, trial chambers, strongholds, temples and ruined portals are filtered out. Toast, chat line and sound on finds. Finds are saved per server and shown as waypoint beams, even after the chunk unloads. |
-| **SusChunk** | World | Flags chunks with **hidden** activity: straight dug tunnels (flat floor + ceiling), buried storage, torches/lanterns underground, lit portals, rails or overworld blocks in the Nether, grown farms. Heat-colored chunk boxes with reasons. Ignores the main highways (configurable). Optional **chunk age overlay** (old vs. new generation) for following travel trails. |
-| **PlayerDetector** | Misc | Alerts when a player enters or leaves your visual range (toast, chat, sound, cooldown). Friends list (no alerts, green). Box, tracers, nametags (health + distance), a radar HUD with each player's held item and health bar, **logout spots**, optional tab-list join/leave alerts, and an encounter log. |
+| **BlockESP** | Render | Highlights chosen blocks through walls: per-block colors, box/outline/fill, tracers, labels. Searchable block picker with presets. **Exposed Only** mode ignores anti-xray fake ores. |
+| **StorageESP** | Render | Chests (double chests merged), trapped chests, ender chests, shulkers in their dye color, barrels, hoppers, furnaces, dispensers, brewing stands, chest minecarts / chest boats. Per-type colors, tracers and per-chunk "N storage" counts. |
+| **XRay** | Render | Hides everything except your chosen blocks, with fullbright. Works with Fabric API's renderer. See the anti-xray note below. |
+| **Freecam** | Render | Moves only the camera. Your player stays still and sends exactly what an idle player sends. Attack, use and pick-block are blocked while it is on. |
+| **BaseFinder** | World | Scores chunks for player-made blocks and entities, detects stashes, filters out natural structures. Toasts, chat, sound, saved waypoints. |
+| **SusChunk** | World | Flags hidden activity: dug tunnels, buried storage, lights underground, portals, Nether rails, farms. Optional old/new chunk overlay for trails. |
+| **PlayerDetector** | Misc | Visual-range alerts, friends, radar HUD, ESP and nametags, logout spots, join/leave alerts, encounter log. |
+
+![X-Ray (exposed only)](docs/xray.png)
+
+### X-Ray and 2b2t's anti-xray
+
+2b2t hides real ores that are fully enclosed in stone and sends **fake ores** in their place. The real positions never reach your client, so **no client-side X-Ray can see enclosed ores**. Anything claiming otherwise is either showing the fakes or asking the server (which gets you kicked).
+
+What *does* work: blocks touching air, water or lava must be sent truthfully. With **Exposed Only** (on by default), X-Ray and BlockESP show only those, which means **real** ores in caves, ravines, lava lakes and tunnels, with all the fake noise filtered out.
+
+X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **Sodium** is installed.
 
 ## Interface
-
-* **ClickGUI**: press **Right Shift**. Draggable, collapsible panels with animated toggles, sliders, an HSV color picker, keybinds, a module search (just start typing) and a description bar.
-  * Left click: toggle. Right click: settings. Middle click: bind a key.
-* **Saved Finds** (★ button in the GUI): every base, stash and sus chunk found on the current server. You can copy coords, delete entries and filter by type.
-* **HUD**: watermark, animated module list, coords plus converted Nether/Overworld coords, a "Bases nearby" list, the player radar and toast notifications.
-* **Client panel**: accent colors (or chroma), panel opacity, blur, HUD toggles, which side the module list is on, and a *Hide Coords* streamer mode.
-
-Everything is saved automatically to `.minecraft/config/newclient/`:
-* `config.json`: modules, settings, keybinds and GUI layout
-* `finds/<server>.json`: saved waypoints
-* `finds/<server>.log`: human-readable log of every find, encounter and logout
 
 | ClickGUI | Block picker | Saved finds |
 |---|---|---|
 | ![](docs/clickgui.png) | ![](docs/block_picker.png) | ![](docs/finds.png) |
 
-*(Screenshots from the automated in-game test, small window with software rendering.)*
+* **Right Shift** opens the GUI. Left click: toggle. Right click: settings. Middle click: bind. Start typing to search.
+* **★ Finds**: every base, stash and sus chunk saved on the current server. You can copy coords and delete entries.
+* **HUD**: watermark, module list, coords plus converted Nether/Overworld coords, nearby bases, player radar and toasts.
+* **Client panel**: accent colors and chroma, opacity, blur, HUD toggles, and "Hide Coords" streamer mode.
 
-## Install
+Everything is saved to `.minecraft/config/zero/` (`config.json`, plus `finds/<server>.json` and `finds/<server>.log`).
 
-1. Install **Fabric Loader** (0.17+) for Minecraft **1.21.11**.
-2. Put **Fabric API** for 1.21.11 and `newclient-1.0.0.jar` in `.minecraft/mods`.
-3. Launch, join a world, press **Right Shift**.
-
-## Build
+## Build it yourself
 
 ```
-./gradlew build          # -> build/libs/newclient-1.0.0.jar
-./gradlew runClient      # dev client
-./gradlew runClientGameTest   # headless in-game smoke test with screenshots
+./gradlew build               # -> build/libs/zero-<version>.jar
+./gradlew runClientGameTest   # headless in-game test with screenshots
 ```
 
-Requires JDK 21.
+Requires JDK 21. The screenshots above come from that automated test (small window, software rendering).
 
-## Notes on anticheat safety
+## Anticheat notes
 
-* No module sends packets, changes movement, rotation, interaction or inventory, or registers network channels.
-* Freecam leaves the real player as the camera entity, so vanilla keeps sending its normal idle position updates. Only the render camera moves.
-* Chat messages from the client are local (they only appear in your own chat). Sounds are local UI sounds.
-* Chunk scanning is spread over ticks (4 ms budget) so it never freezes the game.
-* Fabric API itself announces the usual Fabric channels to the server like any Fabric client; NewClient adds nothing to that.
+* No module sends packets, or changes movement, rotation, interaction or inventory.
+* Freecam keeps the real player as the camera entity, so vanilla keeps sending normal idle position updates.
+* Chat messages and sounds from the client are local only.
+* Fabric API itself tells the server it is a Fabric client, like any Fabric setup. ZERØ adds nothing to that.

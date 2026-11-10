@@ -10,7 +10,7 @@ repositories {}
 
 loom {
 	mods {
-		"newclient" { sourceSet sourceSets.main }
+		"zero" { sourceSet sourceSets.main }
 	}
 }
 
@@ -26,7 +26,10 @@ processResources {
 	filesMatching("fabric.mod.json") { expand "version": project.version }
 }
 
-tasks.withType(JavaCompile).configureEach { it.options.release = 21 }
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = "UTF-8"
+}
 
 java {
 	withSourcesJar()
@@ -38,7 +41,7 @@ java {
 fabricApi {
 	configureTests {
 		createSourceSet = true
-		modId = "newclient-test"
+		modId = "zero-test"
 		enableGameTests = false
 		enableClientGameTests = true
 		eula = true

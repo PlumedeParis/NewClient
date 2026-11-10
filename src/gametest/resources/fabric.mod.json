@@ -1,10 +1,10 @@
 {
 	"schemaVersion": 1,
-	"id": "newclient-test",
+	"id": "zero-test",
 	"version": "1.0.0",
-	"name": "NewClient Tests",
+	"name": "ZERØ Tests",
 	"environment": "client",
 	"entrypoints": {
-		"fabric-client-gametest": ["dev.newclient.test.NewClientGameTest"]
+		"fabric-client-gametest": ["dev.zero.test.ZeroGameTest"]
 	}
 }

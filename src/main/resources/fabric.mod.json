@@ -1,17 +1,17 @@
 {
 	"schemaVersion": 1,
-	"id": "newclient",
+	"id": "zero",
 	"version": "${version}",
-	"name": "NewClient",
+	"name": "ZERØ",
 	"description": "Client-side utility client for anarchy servers: BlockESP, BaseFinder, Freecam, PlayerDetector and SusChunk. Never sends anything to the server.",
 	"authors": ["PlumedeParis"],
 	"license": "MIT",
-	"icon": "assets/newclient/icon.png",
+	"icon": "assets/zero/icon.png",
 	"environment": "client",
 	"entrypoints": {
-		"client": ["dev.newclient.NewClient"]
+		"client": ["dev.zero.ZeroClient"]
 	},
-	"mixins": ["newclient.mixins.json"],
+	"mixins": ["zero.mixins.json"],
 	"depends": {
 		"fabricloader": ">=0.17.0",
 		"minecraft": "~1.21.11",
