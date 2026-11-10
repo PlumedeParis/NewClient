@@ -124,6 +124,29 @@ public class ZeroGameTest implements FabricClientGameTest {
 			});
 			ctx.waitTicks(10);
 			ctx.takeScreenshot("02d_hunt");
+			// Spawner ESP + custom crosshair
+			server.runCommand("setblock 316 -50 214 spawner{SpawnData:{entity:{id:\"minecraft:zombie\"}}}");
+			server.runCommand("setblock 326 -50 214 spawner{SpawnData:{entity:{id:\"minecraft:blaze\"}}}");
+			ctx.runOnClient(mc -> {
+				ModuleManager.amethystFinder.setEnabled(false);
+				ModuleManager.growthFinder.setEnabled(false);
+				ModuleManager.rotatedDeepslate.setEnabled(false);
+				ModuleManager.spawnerFinder.setEnabled(false);
+				ModuleManager.tunnelFinder.setEnabled(false);
+				ModuleManager.spawnerEsp.setEnabled(true);
+				ModuleManager.crosshair.setEnabled(true);
+			});
+			ctx.waitTicks(60);
+			ctx.takeScreenshot("02e_spawner_esp_crosshair");
+			ctx.setScreen(() -> new dev.zero.gui.CrosshairEditorScreen(ModuleManager.crosshair.pixels, null));
+			ctx.waitTicks(15);
+			ctx.takeScreenshot("02f_crosshair_editor");
+			ctx.setScreen(() -> null);
+			ctx.waitTicks(5);
+			ctx.computeOnClient(mc -> {
+				System.out.println("[ZERO-HUNT-TEST] spawnerEsp=" + ModuleManager.spawnerEsp.getInfo());
+				return null;
+			});
 			ctx.computeOnClient(mc -> {
 				String r = "amethyst=" + ModuleManager.amethystFinder.getInfo() + " kelp=" + ModuleManager.growthFinder.getInfo()
 					+ " deepslate=" + ModuleManager.rotatedDeepslate.getInfo() + " spawner=" + ModuleManager.spawnerFinder.getInfo()

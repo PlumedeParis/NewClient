@@ -9,6 +9,7 @@ import dev.zero.setting.NumberSetting;
 import dev.zero.setting.Setting;
 import dev.zero.setting.StringListSetting;
 import dev.zero.setting.TextSetting;
+import dev.zero.setting.PixelGridSetting;
 
 public abstract class SettingComp<S extends Setting<?>> extends Comp {
 	protected final S setting;
@@ -35,6 +36,7 @@ public abstract class SettingComp<S extends Setting<?>> extends Comp {
 		if (s instanceof StringListSetting sl) return new StringListComp(sl);
 		if (s instanceof KeybindSetting k) return new KeybindComp(k);
 		if (s instanceof TextSetting t) return new TextComp(t);
+		if (s instanceof PixelGridSetting p) return new PixelGridComp(p);
 		throw new IllegalArgumentException("No component for " + s.getClass());
 	}
 }

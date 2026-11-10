@@ -7,6 +7,8 @@ import dev.zero.modules.RotatedDeepslate;
 import dev.zero.modules.SpawnerFinder;
 import dev.zero.modules.TunnelFinder;
 import dev.zero.modules.BlockESP;
+import dev.zero.modules.Crosshair;
+import dev.zero.modules.SpawnerESP;
 import dev.zero.modules.Freecam;
 import dev.zero.modules.PlayerDetector;
 import dev.zero.modules.SeedOreFinder;
@@ -28,6 +30,8 @@ public final class ModuleManager {
 	public static SusChunk susChunk;
 	public static StorageESP storageEsp;
 	public static XRay xray;
+	public static SpawnerESP spawnerEsp;
+	public static Crosshair crosshair;
 	public static SeedOreFinder seedOreFinder;
 	public static AmethystFinder amethystFinder;
 	public static GrowthFinder growthFinder;
@@ -41,6 +45,8 @@ public final class ModuleManager {
 		MODULES.add(blockEsp = new BlockESP());
 		MODULES.add(storageEsp = new StorageESP());
 		MODULES.add(xray = new XRay());
+		MODULES.add(spawnerEsp = new SpawnerESP());
+		MODULES.add(crosshair = new Crosshair());
 		MODULES.add(freecam = new Freecam());
 		MODULES.add(baseFinder = new BaseFinder());
 		MODULES.add(susChunk = new SusChunk());

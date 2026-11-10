@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientWorldEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -54,6 +55,11 @@ public final class ZeroClient implements ClientModInitializer {
 		});
 		WorldRenderEvents.END_MAIN.register(context -> render3D((MultiBufferSource.BufferSource) context.consumers()));
 		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), Hud::render);
+		// Custom crosshair: draws ZERØ's design instead of the vanilla one while enabled.
+		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (graphics, delta) -> {
+			if (ModuleManager.crosshair != null && ModuleManager.crosshair.isEnabled()) ModuleManager.crosshair.renderCrosshair(graphics);
+			else vanilla.render(graphics, delta);
+		});
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
 
 		LOGGER.info("ZERØ loaded with {} modules (client-side only)", ModuleManager.all().size());
