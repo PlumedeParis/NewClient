@@ -104,6 +104,17 @@ public final class FindsStore {
 		return null;
 	}
 
+	/** Like {@link #near} but only matches finds whose details start with {@code prefix}. */
+	public static Find nearWithPrefix(String dim, int x, int z, int radius, String prefix) {
+		ensureLoaded();
+		for (Find f : FINDS) {
+			if (!f.dimension.equals(dim) || !f.details.startsWith(prefix)) continue;
+			long dx = f.x - x, dz = f.z - z;
+			if (dx * dx + dz * dz <= (long) radius * radius) return f;
+		}
+		return null;
+	}
+
 	public static void add(Find find, boolean writeLog) {
 		ensureLoaded();
 		FINDS.add(find);

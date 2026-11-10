@@ -53,6 +53,29 @@ public class ZeroGameTest implements FabricClientGameTest {
 			server.runCommand("setblock 304 -56 195 gold_ore");
 			server.runCommand("setblock 309 -55 196 iron_ore");
 			server.runCommand("setblock 301 -54 194 redstone_ore");
+			// --- Hunt module scenarios ---
+			// Player-placed (sideways) deepslate patching the tunnel
+			server.runCommand("fill 296 -55 194 299 -54 194 deepslate[axis=x]");
+			// Dug 1x1 shaft and a staircase inside the hill
+			server.runCommand("fill 312 -59 190 312 -45 190 air");
+			for (int i = 0; i < 8; i++) server.runCommand("fill " + (292 + i) + " " + (-46 - i) + " 201 " + (292 + i) + " " + (-44 - i) + " 201 air");
+			// Fully grown geode: budding amethyst wrapped in clusters
+			server.runCommand("fill 330 -60 200 336 -54 206 calcite");
+			server.runCommand("fill 331 -59 201 335 -55 205 air");
+			server.runCommand("fill 333 -58 203 333 -56 203 budding_amethyst");
+			server.runCommand("fill 332 -58 203 332 -56 203 amethyst_cluster[facing=west]");
+			server.runCommand("fill 334 -58 203 334 -56 203 amethyst_cluster[facing=east]");
+			server.runCommand("fill 333 -58 202 333 -56 202 amethyst_cluster[facing=north]");
+			server.runCommand("fill 333 -58 204 333 -56 204 amethyst_cluster[facing=south]");
+			server.runCommand("setblock 333 -55 203 small_amethyst_bud[facing=up]");
+			// Pond with kelp grown past its natural age
+			server.runCommand("fill 330 -60 180 336 -52 186 glass");
+			server.runCommand("fill 331 -59 181 335 -52 185 water");
+			for (int x = 331; x <= 335; x++) server.runCommand("setblock " + x + " -59 183 kelp[age=25]");
+			// Pig spawner (DonutSMP style) and a cow farm
+			server.runCommand("setblock 320 -60 214 spawner{SpawnData:{entity:{id:\"minecraft:pig\"}}}");
+			server.runCommand("fill 318 -60 216 324 -58 222 oak_fence hollow");
+			for (int i = 0; i < 20; i++) server.runCommand("summon cow 321 -60 219 {NoAI:1b}");
 			server.runCommand("tp @a 302 -30 226 180 30");
 			ctx.runOnClient(mc -> mc.player.getAbilities().flying = true);
 			ctx.waitTicks(20);
@@ -64,6 +87,11 @@ public class ZeroGameTest implements FabricClientGameTest {
 				ModuleManager.susChunk.setEnabled(true);
 				ModuleManager.playerDetector.setEnabled(true);
 				ModuleManager.storageEsp.setEnabled(true);
+				ModuleManager.amethystFinder.setEnabled(true);
+				ModuleManager.growthFinder.setEnabled(true);
+				ModuleManager.rotatedDeepslate.setEnabled(true);
+				ModuleManager.spawnerFinder.setEnabled(true);
+				ModuleManager.tunnelFinder.setEnabled(true);
 			});
 			ctx.waitTicks(100);
 			ctx.takeScreenshot("01_world_modules");
@@ -87,6 +115,22 @@ public class ZeroGameTest implements FabricClientGameTest {
 			ctx.getInput().holdKeyFor(o -> o.keyJump, 16);
 			ctx.waitTicks(10);
 			ctx.takeScreenshot("02c_storage");
+			// Hunt-only view
+			ctx.runOnClient(mc -> {
+				ModuleManager.blockEsp.setEnabled(false);
+				ModuleManager.storageEsp.setEnabled(false);
+				ModuleManager.baseFinder.setEnabled(false);
+				ModuleManager.susChunk.setEnabled(false);
+			});
+			ctx.waitTicks(10);
+			ctx.takeScreenshot("02d_hunt");
+			ctx.computeOnClient(mc -> {
+				String r = "amethyst=" + ModuleManager.amethystFinder.getInfo() + " kelp=" + ModuleManager.growthFinder.getInfo()
+					+ " deepslate=" + ModuleManager.rotatedDeepslate.getInfo() + " spawner=" + ModuleManager.spawnerFinder.getInfo()
+					+ " tunnels=" + ModuleManager.tunnelFinder.getInfo();
+				System.out.println("[ZERO-HUNT-TEST] " + r);
+				return null;
+			});
 			ctx.runOnClient(mc -> ModuleManager.freecam.setEnabled(false));
 			ctx.waitTicks(5);
 

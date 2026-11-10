@@ -150,7 +150,7 @@ public class BaseFinder extends ScanningModule {
 	private int foundCount;
 
 	public BaseFinder() {
-		super("BaseFinder", "Detects bases and stashes from player-placed blocks", Category.WORLD);
+		super("BaseFinder", "Detects bases and stashes from player-placed blocks", Category.HUNT);
 	}
 
 	@Override

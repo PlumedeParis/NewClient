@@ -21,9 +21,41 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 | **StorageESP** | Render | Chests (double chests merged), trapped chests, ender chests, shulkers in their dye color, barrels, hoppers, furnaces, dispensers, brewing stands, chest minecarts / chest boats. Per-type colors, tracers and per-chunk "N storage" counts. |
 | **XRay** | Render | Hides everything except your chosen blocks, with fullbright. Works with Fabric API's renderer. See the anti-xray note below. |
 | **Freecam** | Render | Moves only the camera. Your player stays still and sends exactly what an idle player sends. Attack, use and pick-block are blocked while it is on. |
-| **BaseFinder** | World | Scores chunks for player-made blocks and entities, detects stashes, filters out natural structures. Toasts, chat, sound, saved waypoints. |
-| **SusChunk** | World | Flags hidden activity: dug tunnels, buried storage, lights underground, portals, Nether rails, farms. Optional old/new chunk overlay for trails. |
 | **PlayerDetector** | Misc | Visual-range alerts, friends, radar HUD, ESP and nametags, logout spots, join/leave alerts, encounter log. |
+
+### World
+
+| Module | What it does |
+|---|---|
+| **SeedOreFinder** | Type the world seed and ZERØ predicts ores (diamonds, debris, emeralds, gold, iron, redstone, lapis, copper, coal, quartz). It runs Minecraft 1.21.11's **own ore generation code** locally, from the seed, against a private copy of the terrain you have loaded. A live **seed match %** compares predictions with ores you can actually see, so you know immediately whether the seed works on that server. |
+
+**Measured accuracy** (automated test against the real world generator, inner 3×3 chunks):
+
+| Ore | Precision | Recall |
+|---|---|---|
+| Diamonds | 100% | 100% |
+| Redstone | 100% | 100% |
+| Ancient debris | 100% | 100% |
+| Nether gold | 99.8% | 100% |
+| Iron | 100% | 90.6% |
+
+**Limits (important):** it only works if the server uses vanilla ore generation with that exact seed. Many Paper servers randomize ore "feature seeds" precisely to stop seed-based finders; if that is the case the seed match % will stay near 0% and no client can fix it. It also only matches chunks generated in 1.18+ (not 2b2t's old 1.12 chunks). Predictions in unloaded chunks use estimated terrain and are less precise (shown with `~`).
+
+### Hunt (base finding, DonutSMP-style techniques)
+
+| Module | Technique |
+|---|---|
+| **BaseFinder** | Player-made blocks / stashes, natural structures filtered out. |
+| **SusChunk** | Hidden activity: dug tunnels, buried storage, lights, portals, farms, chunk age. |
+| **AmethystFinder** | Geodes generate with ~25% fully grown clusters. Buds only grow (and budding amethyst only sprouts new buds) while a player keeps the chunk loaded, so a mostly-grown geode means someone has been nearby for a long time. |
+| **GrowthFinder** | Kelp tops generate at age 20–23; age 24–25 is only reachable by growing in a loaded chunk, which is hard proof of long loading. |
+| **RotatedDeepslate** | Natural deepslate is always upright (axis Y). Sideways deepslate (axis X/Z) was placed by a player, typically patching a tunnel or a base entrance. Also flags cobbled deepslate (outside ancient cities). |
+| **SpawnerFinder** | Spawners with a non-natural mob or no dungeon/mineshaft/fortress/stronghold/bastion around them were placed by a player. Shows the mob type. Also detects mob farms (big same-type mob clusters) and dropped-item piles. |
+| **TunnelFinder** | Highlights 1x1 shafts dug straight down, 1-wide 2-high tunnels and 1-wide staircases. Natural caves are never that straight and regular. |
+
+![Hunt modules: tunnel, shaft, staircase, rotated deepslate, grown kelp, geode, spawner/farm tracers](docs/hunt.png)
+
+> Krypton is closed-source, so ZERØ does not copy it; these modules implement the base-hunting techniques DonutSMP players use, all from data your client already receives.
 
 ![X-Ray (exposed only)](docs/xray.png)
 
@@ -52,7 +84,7 @@ Everything is saved to `.minecraft/config/zero/` (`config.json`, plus `finds/<se
 
 ```
 ./gradlew build               # -> build/libs/zero-<version>.jar
-./gradlew runClientGameTest   # headless in-game test with screenshots
+./gradlew runClientGameTest   # headless in-game tests: features + seed-prediction accuracy
 ```
 
 Requires JDK 21. The screenshots above come from that automated test (small window, software rendering).

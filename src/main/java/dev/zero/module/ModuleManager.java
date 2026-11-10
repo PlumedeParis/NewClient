@@ -1,9 +1,15 @@
 package dev.zero.module;
 
+import dev.zero.modules.AmethystFinder;
 import dev.zero.modules.BaseFinder;
+import dev.zero.modules.GrowthFinder;
+import dev.zero.modules.RotatedDeepslate;
+import dev.zero.modules.SpawnerFinder;
+import dev.zero.modules.TunnelFinder;
 import dev.zero.modules.BlockESP;
 import dev.zero.modules.Freecam;
 import dev.zero.modules.PlayerDetector;
+import dev.zero.modules.SeedOreFinder;
 import dev.zero.modules.StorageESP;
 import dev.zero.modules.XRay;
 import dev.zero.modules.SusChunk;
@@ -22,6 +28,12 @@ public final class ModuleManager {
 	public static SusChunk susChunk;
 	public static StorageESP storageEsp;
 	public static XRay xray;
+	public static SeedOreFinder seedOreFinder;
+	public static AmethystFinder amethystFinder;
+	public static GrowthFinder growthFinder;
+	public static RotatedDeepslate rotatedDeepslate;
+	public static SpawnerFinder spawnerFinder;
+	public static TunnelFinder tunnelFinder;
 
 	private ModuleManager() {}
 
@@ -32,6 +44,12 @@ public final class ModuleManager {
 		MODULES.add(freecam = new Freecam());
 		MODULES.add(baseFinder = new BaseFinder());
 		MODULES.add(susChunk = new SusChunk());
+		MODULES.add(seedOreFinder = new SeedOreFinder());
+		MODULES.add(amethystFinder = new AmethystFinder());
+		MODULES.add(growthFinder = new GrowthFinder());
+		MODULES.add(rotatedDeepslate = new RotatedDeepslate());
+		MODULES.add(spawnerFinder = new SpawnerFinder());
+		MODULES.add(tunnelFinder = new TunnelFinder());
 		MODULES.add(playerDetector = new PlayerDetector());
 	}
 

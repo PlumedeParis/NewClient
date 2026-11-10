@@ -8,6 +8,7 @@ import dev.zero.setting.KeybindSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.setting.Setting;
 import dev.zero.setting.StringListSetting;
+import dev.zero.setting.TextSetting;
 
 public abstract class SettingComp<S extends Setting<?>> extends Comp {
 	protected final S setting;
@@ -33,6 +34,7 @@ public abstract class SettingComp<S extends Setting<?>> extends Comp {
 		if (s instanceof BlockListSetting bl) return new BlockListComp(bl);
 		if (s instanceof StringListSetting sl) return new StringListComp(sl);
 		if (s instanceof KeybindSetting k) return new KeybindComp(k);
+		if (s instanceof TextSetting t) return new TextComp(t);
 		throw new IllegalArgumentException("No component for " + s.getClass());
 	}
 }

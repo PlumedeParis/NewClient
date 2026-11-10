@@ -110,7 +110,7 @@ public class SusChunk extends ScanningModule {
 	private int tickCounter;
 
 	public SusChunk() {
-		super("SusChunk", "Flags chunks with hidden player activity", Category.WORLD);
+		super("SusChunk", "Flags chunks with hidden player activity", Category.HUNT);
 	}
 
 	@Override
