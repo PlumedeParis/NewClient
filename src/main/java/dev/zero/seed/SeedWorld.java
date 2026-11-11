@@ -177,5 +177,10 @@ public final class SeedWorld {
 		}
 	}
 
+	/** Biome the seed generates at a quart position (4x4x4 cell), as a registry id. */
+	public String biomeIdAtQuart(int qx, int qy, int qz) {
+		return biomeManager.getNoiseBiomeAtQuart(qx, qy, qz).unwrapKey().map(k -> k.identifier().toString()).orElse("?");
+	}
+
 	public record Prediction(BlockPos pos, Block block) {}
 }

@@ -69,6 +69,7 @@ public class SeedOreFinder extends Module {
 	private final BoolSetting quartz = add(new BoolSetting("Quartz", "Nether quartz ore", false));
 	private final NumberSetting radius = add(new NumberSetting("Radius", "Prediction radius in chunks (does not need loaded chunks)", 6, 1, 16, 1, " ch"));
 	private final BoolSetting unloaded = add(new BoolSetting("Unloaded Chunks", "Also predict ores in chunks you haven't loaded / can't see", true));
+	private final BoolSetting dimUnmatched = add(new BoolSetting("Dim Unmatched", "Draw predictions that don't match what you see dimmer (off = all look the same)", false));
 	private final BoolSetting hideMined = add(new BoolSetting("Hide Mined", "Hide predictions that are visibly mined out", true));
 	private final BoolSetting tracers = add(new BoolSetting("Tracers", "Tracers to the nearest predicted ores", false));
 	private final BoolSetting labels = add(new BoolSetting("Labels", "Name + distance on the nearest ores", true));
@@ -130,6 +131,8 @@ public class SeedOreFinder extends Module {
 	@Override
 	protected void onDisable() {
 		sortedCache = null;
+		biomeMatch = biomeTotal = 0;
+		biomeChecked.clear();
 		predictor.unconfigure();
 		verified.clear();
 		confirmed = mismatched = 0;
@@ -137,6 +140,8 @@ public class SeedOreFinder extends Module {
 
 	@Override
 	public void onWorldLeave() {
+		biomeMatch = biomeTotal = 0;
+		biomeChecked.clear();
 		predictor.unconfigure();
 		verified.clear();
 		confirmed = mismatched = 0;
@@ -154,6 +159,8 @@ public class SeedOreFinder extends Module {
 			lastDim = dim;
 			verified.clear();
 			confirmed = mismatched = 0;
+			biomeMatch = biomeTotal = 0;
+			biomeChecked.clear();
 		}
 		predictor.configure(s, dim.equals("the_nether"), mc.level.getMinY(), mc.level.getHeight());
 		if (!predictor.ready()) return;
@@ -189,8 +196,40 @@ public class SeedOreFinder extends Module {
 		}
 	}
 
+	private int biomeMatch, biomeTotal;
+	private final it.unimi.dsi.fastutil.longs.LongOpenHashSet biomeChecked = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+
+	/**
+	 * Seed check that anti-xray cannot affect: compares the biomes the seed generates with the
+	 * real biomes the server sent for each loaded chunk.
+	 */
+	private void verifyBiomes() {
+		SeedWorld w = predictor.world();
+		if (w == null) return;
+		ChunkPos center = mc.player.chunkPosition();
+		int r = Math.min(8, mc.options.getEffectiveRenderDistance());
+		for (int cx = center.x - r; cx <= center.x + r; cx++)
+			for (int cz = center.z - r; cz <= center.z + r; cz++) {
+				long key = ChunkPos.asLong(cx, cz);
+				if (biomeChecked.contains(key) || !mc.level.getChunkSource().hasChunk(cx, cz)) continue;
+				biomeChecked.add(key);
+				int qx0 = cx << 2, qz0 = cz << 2;
+				// a few cells per chunk, at surface height
+				int qy = Math.max(mc.level.getMinY(), Math.min(mc.level.getMaxY() - 1, mc.level.getSeaLevel())) >> 2;
+				for (int i = 0; i < 4; i++) {
+					int qx = qx0 + (i & 1) * 2 + 1, qz = qz0 + (i >> 1) * 2 + 1;
+					String real = mc.level.getNoiseBiome(qx, qy, qz).unwrapKey().map(k -> k.identifier().toString()).orElse("");
+					String predicted = w.biomeIdAtQuart(qx, qy, qz);
+					biomeTotal++;
+					if (real.equals(predicted)) biomeMatch++;
+				}
+			}
+		if (biomeChecked.size() > 100_000) biomeChecked.clear();
+	}
+
 	/** Compares predictions with what the client can actually see (exposed blocks only). */
 	private void verify() {
+		verifyBiomes();
 		for (OrePredictor.Result res : predictor.results().values()) {
 			if (!res.realTerrain()) continue;
 			for (SeedWorld.Prediction p : res.predictions()) {
@@ -268,7 +307,7 @@ public class SeedOreFinder extends Module {
 			boolean confirmedHere = Integer.valueOf(1).equals(verified.get(v.p.pos()));
 			// Estimated (unloaded terrain) predictions are drawn the same way, only a little dimmer.
 			boolean notHere = Integer.valueOf(2).equals(verified.get(v.p.pos()));
-			float strength = notHere ? 0.45f : v.real || confirmedHere ? 1f : 0.8f;
+			float strength = notHere && dimUnmatched.get() ? 0.45f : v.real || confirmedHere || notHere ? 1f : 0.85f;
 			AABB ob = new AABB(v.p.pos()).deflate(0.06);
 			if (style.get() != Style.BOX) {
 				int a = (int) (255 * holoOpacity.get() * strength * pulse);
@@ -297,7 +336,7 @@ public class SeedOreFinder extends Module {
 	@Override
 	public void onRender2D(GuiGraphics g, float pt) {
 		if (!hud.get()) return;
-		String line1, line2;
+		String line1, line2, line3 = null;
 		if (parseSeed(seed.get()) == null) {
 			line1 = "Seed Ores: no seed";
 			line2 = "Open the GUI and type the seed";
@@ -306,21 +345,34 @@ public class SeedOreFinder extends Module {
 			line2 = predictor.status();
 		} else {
 			int total = confirmed + mismatched;
-			line1 = "Seed Ores  §7" + count + " predicted" + (predictor.pendingCount() > 0 ? " §8(working)" : "");
-			if (total < 5) line2 = "§7Seed check: mine / explore caves to verify";
-			else {
-				int pct = Math.round(100f * confirmed / total);
-				String col = pct >= 80 ? "§a" : pct >= 40 ? "§e" : "§c";
-				line2 = "Seed match " + col + pct + "%§7 (" + confirmed + "/" + total + ")" + (pct < 40 ? " §cwrong seed?" : "");
+			line1 = "Seed Ores  \u00A77" + count + " predicted" + (predictor.pendingCount() > 0 ? " \u00A78(working)" : "");
+			int bp = biomeTotal == 0 ? 0 : Math.round(100f * biomeMatch / biomeTotal);
+			int op = total == 0 ? 0 : Math.round(100f * confirmed / total);
+			String bc = bp >= 75 ? "\u00A7a" : bp >= 40 ? "\u00A7e" : "\u00A7c";
+			String oc = op >= 75 ? "\u00A7a" : op >= 30 ? "\u00A7e" : "\u00A7c";
+			line2 = "\u00A77Biomes " + (biomeTotal < 8 ? "\u00A78..." : bc + bp + "%") + "\u00A77  \u2022  Ores "
+				+ (total < 5 ? "\u00A78explore caves" : oc + op + "%\u00A77 (" + confirmed + "/" + total + ")");
+			if (biomeTotal >= 8) {
+				if (bp >= 75) {
+					if (total >= 20 && op < 25) line3 = "\u00A7eSeed is right, but this server scrambles ore placement";
+					else if (total < 5) line3 = "\u00A7aSeed is right \u2714";
+					else line3 = "\u00A7aSeed works \u2714";
+				} else if (bp < 40) line3 = "\u00A7cWrong seed for this world (or very old chunks)";
+				else line3 = "\u00A7eMixed: old and new chunks around you";
 			}
 		}
-		int w = Math.max(Render2D.width(line1), Render2D.width(line2)) + 14, h = 26;
+		int w = Math.max(Render2D.width(line1), Math.max(Render2D.width(line2), line3 == null ? 0 : Render2D.width(line3))) + 14;
+		int h = line3 == null ? 26 : 36;
 		int[] pos = Hud.slot("Seed ores", w, h);
 		Render2D.roundedRect(g, pos[0], pos[1], w, h, 5, 0xC8101016);
 		Render2D.rect(g, pos[0], pos[1] + 4, 2, h - 8, BlockColors.get(Blocks.DIAMOND_ORE));
 		Render2D.text(g, line1, pos[0] + 7, pos[1] + 4, 0xFFFFFFFF, false);
 		Render2D.text(g, line2, pos[0] + 7, pos[1] + 14, 0xFFB4B4C8, false);
+		if (line3 != null) Render2D.text(g, line3, pos[0] + 7, pos[1] + 24, 0xFFB4B4C8, false);
 	}
+
+	/** Biome agreement in percent (in-game test). */
+	public int biomeMatchPercent() { return biomeTotal == 0 ? -1 : Math.round(100f * biomeMatch / biomeTotal); }
 
 	/** Snapshot of current predictions (used by the in-game accuracy test). */
 	public List<SeedWorld.Prediction> snapshot(boolean realTerrainOnly) {

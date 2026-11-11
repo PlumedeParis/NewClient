@@ -42,6 +42,28 @@ public class SeedAccuracyTest implements FabricClientGameTest {
 			sp.getServer().runCommand("tp @a 0 40 0 30 70");
 			ctx.waitTicks(40);
 			ctx.takeScreenshot("seed_holograms");
+			ctx.waitTicks(60);
+			int bio = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.biomeMatchPercent());
+			System.out.println("[ZERO-SEED-TEST] biome check with the RIGHT seed: " + bio + "%" + (bio >= 90 ? " OK" : " FAIL"));
+			ctx.takeScreenshot("seed_hud_right");
+			ctx.runOnClient(mc -> {
+				ModuleManager.seedOreFinder.setEnabled(false);
+				ModuleManager.seedOreFinder.setSeedText("12345");
+				ModuleManager.seedOreFinder.setEnabled(true);
+			});
+			ctx.waitTicks(200);
+			int bioWrong = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.biomeMatchPercent());
+			int drawnWrong = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.visibleCount());
+			System.out.println("[ZERO-SEED-TEST] biome check with a WRONG seed: " + bioWrong + "%" + (bioWrong >= 0 && bioWrong < 40 ? " OK" : " FAIL")
+				+ " | holograms still shown: " + drawnWrong + (drawnWrong > 0 ? " OK" : " FAIL"));
+			ctx.takeScreenshot("seed_hud_wrong");
+			ctx.runOnClient(mc -> {
+				ModuleManager.seedOreFinder.setEnabled(false);
+				ModuleManager.seedOreFinder.setSeedText(SEED);
+				ModuleManager.seedOreFinder.setEnabled(true);
+			});
+			ctx.waitTicks(100);
+			ctx.waitFor(mc -> ModuleManager.seedOreFinder.idle(), 20 * 120);
 			int drawnUnloaded = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.drawnInUnloadedChunks());
 			int drawnTotal = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.visibleCount());
 			System.out.println("[ZERO-SEED-TEST] holograms drawn: " + drawnTotal + ", of which in chunks the game has NOT loaded: " + drawnUnloaded
