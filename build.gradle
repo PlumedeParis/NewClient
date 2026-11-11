@@ -47,3 +47,8 @@ fabricApi {
 		eula = true
 	}
 }
+
+// The test machine renders in software; Fabric's 10 s network watchdog can trip on slow frames.
+loom.runs.configureEach {
+	if (name == "clientGameTest") vmArg "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
+}

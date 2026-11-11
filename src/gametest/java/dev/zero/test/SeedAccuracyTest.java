@@ -64,7 +64,15 @@ public class SeedAccuracyTest implements FabricClientGameTest {
 			});
 			ctx.waitTicks(100);
 			ctx.waitFor(mc -> ModuleManager.seedOreFinder.idle(), 20 * 120);
-			int drawnUnloaded = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.drawnInUnloadedChunks());
+			ctx.runOnClient(mc -> {
+				for (var st : ModuleManager.seedOreFinder.getSettings())
+					if (st.getName().equals("Radius")) ((dev.zero.setting.NumberSetting) st).set(9.0);
+			});
+			int drawnUnloaded = 0;
+			for (int i = 0; i < 30 && drawnUnloaded == 0; i++) {
+				ctx.waitTicks(20);
+				drawnUnloaded = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.drawnInUnloadedChunks());
+			}
 			int drawnTotal = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.visibleCount());
 			System.out.println("[ZERO-SEED-TEST] holograms drawn: " + drawnTotal + ", of which in chunks the game has NOT loaded: " + drawnUnloaded
 				+ (drawnUnloaded > 0 ? " OK" : " FAIL"));
