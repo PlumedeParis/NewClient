@@ -89,8 +89,8 @@ public class RotatedDeepslate extends ChunkFinderModule<RotatedDeepslate.Found> 
 	public void onRender3D(float pt) {
 		Vec3 cam = WorldUtil.cameraPos();
 		for (Found f : results.values()) {
-			for (BlockPos p : f.rotated()) Render3D.box(new AABB(p).deflate(0.01), 0x403B82F6, 0xFF60A5FA, 1.6f, true);
-			for (BlockPos p : f.cobbled()) Render3D.box(new AABB(p).deflate(0.01), 0x30A5B4FC, 0xC0A5B4FC, 1.2f, true);
+			for (BlockPos p : f.rotated()) if (mc.level.getBlockState(p).is(Blocks.DEEPSLATE)) Render3D.box(new AABB(p).deflate(0.01), 0x403B82F6, 0xFF60A5FA, 1.6f, true);
+			for (BlockPos p : f.cobbled()) if (mc.level.getBlockState(p).is(Blocks.COBBLED_DEEPSLATE)) Render3D.box(new AABB(p).deflate(0.01), 0x30A5B4FC, 0xC0A5B4FC, 1.2f, true);
 			BlockPos first = !f.rotated().isEmpty() ? f.rotated().get(0) : f.cobbled().get(0);
 			if (tracers.get()) Render3D.tracer(Vec3.atCenterOf(first), 0xD060A5FA, 1.5f);
 			if (f.total() >= alertCount.getInt())

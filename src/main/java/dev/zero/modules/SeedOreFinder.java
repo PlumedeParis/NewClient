@@ -166,11 +166,12 @@ public class SeedOreFinder extends Module {
 		for (OrePredictor.Result res : predictor.results().values()) {
 			if (!res.realTerrain()) continue;
 			for (SeedWorld.Prediction p : res.predictions()) {
-				if (verified.containsKey(p.pos()) || !mc.level.isLoaded(p.pos())) continue;
+				Integer prev = verified.get(p.pos());
+				if ((prev != null && prev != 1) || !mc.level.isLoaded(p.pos())) continue;
 				BlockState actual = mc.level.getBlockState(p.pos());
 				if (actual.isAir() || !actual.getFluidState().isEmpty()) {
 					verified.put(p.pos(), 3);
-				} else if (XRay.isExposed(p.pos(), mc.level)) {
+				} else if (prev == null && XRay.isExposed(p.pos(), mc.level)) {
 					boolean ok = actual.getBlock() == p.block();
 					verified.put(p.pos(), ok ? 1 : 2);
 					if (ok) confirmed++;
@@ -198,6 +199,14 @@ public class SeedOreFinder extends Module {
 				if (v != null && v == 2) continue; // visibly something else
 				double d = Math.sqrt(p.pos().distToCenterSqr(cam));
 				if (d > max) continue;
+				if (hideMined.get() && mc.level.isLoaded(p.pos())) {
+					// Mined just now? Hide the box instantly (air / fluid where the ore was).
+					BlockState now = mc.level.getBlockState(p.pos());
+					if (now.isAir() || !now.getFluidState().isEmpty()) {
+						verified.put(p.pos(), 3);
+						continue;
+					}
+				}
 				list.add(new Visible(p, d, res.realTerrain()));
 			}
 		}
@@ -261,6 +270,9 @@ public class SeedOreFinder extends Module {
 	}
 
 	public OrePredictor predictor() { return predictor; }
+
+	/** Boxes drawn last frame (used by the in-game test). */
+	public int visibleCount() { return count; }
 
 	public boolean idle() { return predictor.ready() && predictor.pendingCount() == 0; }
 

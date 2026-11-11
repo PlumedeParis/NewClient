@@ -141,6 +141,8 @@ public class SpawnerESP extends ScanningModule {
 				Vec3 center = Vec3.atCenterOf(e.pos);
 				double d = cam.distanceTo(center);
 				if (d > max) continue;
+				BlockState now = mc.level.getBlockState(e.pos);
+				if (!now.is(Blocks.SPAWNER) && !now.is(Blocks.TRIAL_SPAWNER)) continue; // broken this frame
 				int c = colorOf(e);
 				float edge = (float) Mth.clamp((max - d) / 16.0, 0, 1);
 				Render3D.box(new AABB(e.pos), ColorUtil.withAlpha(c, (int) (fillAlpha.get() * edge)), ColorUtil.withAlpha(c, (int) (240 * edge)), lineWidth.getFloat(), true);

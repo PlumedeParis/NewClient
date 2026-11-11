@@ -194,6 +194,7 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 			for (Entry s : list) {
 				double d = s.box.getCenter().distanceTo(cam);
 				if (d > max) continue;
+				if (!mc.level.getBlockState(s.pos).hasBlockEntity()) continue; // broken this frame
 				shown++;
 				int c = color(s);
 				draw(s.box, c, d);

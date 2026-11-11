@@ -231,7 +231,7 @@ public class AmethystFinder extends ChunkFinderModule<AmethystFinder.ChunkBuds> 
 		for (Geode g : flagged) {
 			int color = ColorUtil.lerp(0xFFB98CFF, 0xFFFF4DD8, Math.min(1f, (g.ratio() - 0.5f) * 2));
 			Render3D.box(g.bounds(), ColorUtil.withAlpha(color, 30), ColorUtil.withAlpha(color, 230), 2f, true);
-			if (clusterBoxes.get()) for (BlockPos p : g.clusterPositions()) Render3D.box(new AABB(p).deflate(0.15), ColorUtil.withAlpha(color, 55), ColorUtil.withAlpha(color, 190), 1f, true);
+			if (clusterBoxes.get()) for (BlockPos p : g.clusterPositions()) if (mc.level.getBlockState(p).is(Blocks.AMETHYST_CLUSTER)) Render3D.box(new AABB(p).deflate(0.15), ColorUtil.withAlpha(color, 55), ColorUtil.withAlpha(color, 190), 1f, true);
 			if (tracers.get()) Render3D.tracer(Vec3.atCenterOf(g.center()), ColorUtil.withAlpha(color, 200), 1.6f);
 			Render3D.label(new Vec3(g.bounds().getCenter().x, g.bounds().maxY + 0.6, g.bounds().getCenter().z),
 				"GROWN GEODE " + Math.round(g.ratio() * 100) + "% §7" + g.clusters() + "/" + g.buds() + " • natural " + odds(g.naturalOdds()) + " • "

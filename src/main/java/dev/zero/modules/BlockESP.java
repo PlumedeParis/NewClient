@@ -175,6 +175,7 @@ public class BlockESP extends ScanningModule {
 		for (int i = 0; i < limit; i++) {
 			Entry e = visible.get(i);
 			BlockState state = mc.level.getBlockState(e.pos);
+			if (!targetCache.contains(state.getBlock())) continue; // mined / changed this frame
 			int base = colorMode.get() == ColorMode.CUSTOM ? color.get() : BlockColors.get(state.getBlock());
 			// Fade boxes out smoothly near the edge of the range.
 			float edge = (float) Math.min(1, (range.get() - Math.sqrt(e.dist)) / 16.0);

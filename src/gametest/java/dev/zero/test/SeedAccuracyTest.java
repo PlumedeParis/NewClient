@@ -37,6 +37,7 @@ public class SeedAccuracyTest implements FabricClientGameTest {
 			sp.getClientWorld().waitForChunksDownload();
 			sp.getServer().runCommand("gamemode spectator @a");
 			check(ctx, sp, Level.OVERWORLD, Set.of(Blocks.DIAMOND_ORE, Blocks.DEEPSLATE_DIAMOND_ORE), "Diamonds", "tp @a 0 40 0");
+			mineCheck(ctx, sp);
 			check(ctx, sp, Level.OVERWORLD, Set.of(Blocks.IRON_ORE, Blocks.DEEPSLATE_IRON_ORE), "Iron", null);
 			check(ctx, sp, Level.OVERWORLD, Set.of(Blocks.REDSTONE_ORE, Blocks.DEEPSLATE_REDSTONE_ORE), "Redstone", null);
 			check(ctx, sp, Level.NETHER, Set.of(Blocks.ANCIENT_DEBRIS), "Ancient debris", "execute in minecraft:the_nether run tp @a 0 40 0");
@@ -72,6 +73,25 @@ public class SeedAccuracyTest implements FabricClientGameTest {
 			System.out.printf("[ZERO-SEED-TEST] task %s: %d/%d correct%n", names.get(t), r[0], r[1]);
 		}
 		ctx.runOnClient(mc -> ModuleManager.seedOreFinder.predictor().world().onlyTask = -1);
+	}
+
+	/** Mining a predicted diamond must remove its box right away. */
+	private void mineCheck(ClientGameTestContext ctx, TestSingleplayerContext sp) {
+		BlockPos target = ctx.computeOnClient(mc -> {
+			for (SeedWorld.Prediction p : ModuleManager.seedOreFinder.snapshot(true))
+				if ((p.block() == Blocks.DIAMOND_ORE || p.block() == Blocks.DEEPSLATE_DIAMOND_ORE) && Math.sqrt(p.pos().distToCenterSqr(mc.gameRenderer.getMainCamera().position())) < 85) return p.pos();
+			return null;
+		});
+		if (target == null) {
+			System.out.println("[ZERO-SEED-TEST] mine check: no diamond in range");
+			return;
+		}
+		ctx.waitTicks(5);
+		int before = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.visibleCount());
+		sp.getServer().runCommand("setblock " + target.getX() + " " + target.getY() + " " + target.getZ() + " air");
+		ctx.waitTicks(3);
+		int after = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.visibleCount());
+		System.out.println("[ZERO-SEED-TEST] mine check: boxes before=" + before + " after=" + after + (after == before - 1 ? " OK" : " FAIL"));
 	}
 
 	private void check(ClientGameTestContext ctx, TestSingleplayerContext sp, ResourceKey<Level> dim, Set<Block> ores, String name, String tp) {
