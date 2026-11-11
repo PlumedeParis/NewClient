@@ -220,6 +220,7 @@ public class PlayerDetector extends Module {
 			double dz = Mth.lerp(pt, p.zo, p.getZ()) - p.getZ();
 			AABB bb = p.getBoundingBox().move(dx, dy, dz);
 			if (box.get()) Render3D.box(bb, ColorUtil.withAlpha(c, 40), ColorUtil.withAlpha(c, 230), 2f, true);
+			if (Render3D.look(bb)) Render3D.lookText(name(p) + (friend ? " (friend)" : "") + " \u00B7 " + Math.round(p.getHealth() + p.getAbsorptionAmount()) + "\u2764", c);
 			Vec3 center = bb.getCenter();
 			if (tracers.get() && !friend) Render3D.tracer(center, ColorUtil.withAlpha(c, 220), 2f);
 			if (nametags.get()) {
@@ -234,6 +235,7 @@ public class PlayerDetector extends Module {
 			for (LogoutSpot l : logouts) {
 				if (!l.dim.equals(dim)) continue;
 				Render3D.box(l.box, 0x309CA3AF, 0xC09CA3AF, 1.5f, true);
+				if (Render3D.look(l.box)) Render3D.lookText(l.name + " \u00B7 logout spot", 0xFF9CA3AF);
 				long mins = (System.currentTimeMillis() - l.time) / 60000;
 				Render3D.label(new Vec3(l.box.getCenter().x, l.box.maxY + 0.4, l.box.getCenter().z), l.name + " §7logout " + mins + "m ago", 0xFFCBD5E1, 1f);
 			}

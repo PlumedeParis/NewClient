@@ -150,6 +150,7 @@ public final class ZeroClient implements ClientModInitializer {
 				}
 			}
 		}
+		if (ModuleManager.xray.isEnabled()) ModuleManager.xray.pickLookTarget();
 		long tf = System.nanoTime();
 		Render3D.flush(buffers);
 		Perf.flush(System.nanoTime() - tf);

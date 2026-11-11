@@ -31,7 +31,7 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 
 | Module | What it does |
 |---|---|
-| **SeedOreFinder** | Type the world seed and ZERØ predicts ores (diamonds, debris, emeralds, gold, iron, redstone, lapis, copper, coal, quartz). It runs Minecraft 1.21.11's **own ore generation code** locally, from the seed, against a private copy of the terrain you have loaded. A live **seed match %** compares predictions with ores you can actually see, so you know immediately whether the seed works on that server. |
+| **SeedOreFinder** | Type the world seed and ZERØ predicts ores (diamonds, debris, emeralds, gold, iron, redstone, lapis, copper, coal, quartz). It runs Minecraft 1.21.11's **own ore generation code** locally, from the seed, against a private copy of the terrain you have loaded. An **Ore Type** option shows normal ores, deepslate ores or both. A live **seed match %** compares predictions with ores you can actually see, so you know immediately whether the seed works on that server. |
 
 **Measured accuracy** (automated test against the real world generator, inner 3×3 chunks):
 
@@ -87,6 +87,7 @@ X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **S
 * **Text boxes** support **Ctrl+V** paste (Cmd+V on Mac), Ctrl+C copy, Ctrl+X cut, Ctrl+A select all, Ctrl+Backspace delete word. Ctrl+V in the GUI pastes into search.
 * **Profiles** (top bar): separate setups (modules, settings, keybinds, crosshair, HUD layout). Create blank / duplicate / rename / delete, and tick "Auto-load on this server" so each server loads its own profile when you join. Stored in `config/zero/profiles/`.
 * **HUD editor** (top bar): drag every HUD panel (watermark, coords, module list, toasts, radars...) anywhere, with snapping to edges, centre and other panels. Right click = back to automatic position. Saved per profile.
+* **Look Info**: aim at anything ZERØ highlights (even through walls) and a label next to the crosshair names it: "Deepslate Diamond Ore · predicted", "Large Chest", "Hopper", "Zombie Spawner", a player's name and health, X-Ray blocks... (Client panel → Look Info).
 * **Right Shift** opens the GUI. Left click: toggle. Right click: settings. Middle click: bind. Start typing to search.
 * **★ Finds**: every base, stash and sus chunk saved on the current server. You can copy coords and delete entries.
 * **HUD**: watermark, module list, coords plus converted Nether/Overworld coords, nearby bases, player radar and toasts.

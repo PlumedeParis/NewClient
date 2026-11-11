@@ -279,7 +279,9 @@ public class BaseRadar extends Module {
 				int color = rankColor(i);
 				double bottom = mc.level.getMinY(), top = mc.level.getMaxY();
 				Render3D.box(new AABB(c.x - 0.4, bottom, c.z - 0.4, c.x + 0.4, top, c.z + 0.4), ColorUtil.withAlpha(color, 50), ColorUtil.withAlpha(color, 170), 1.5f, true);
-				Render3D.box(new AABB(t.pos).inflate(0.3), ColorUtil.withAlpha(color, 70), ColorUtil.withAlpha(color, 255), 2f, true);
+				AABB tb = new AABB(t.pos).inflate(0.3);
+				Render3D.box(tb, ColorUtil.withAlpha(color, 70), ColorUtil.withAlpha(color, 255), 2f, true);
+				if (Render3D.look(tb)) Render3D.lookText("Base target #" + (i + 1) + " (" + Math.round(t.score) + ") \u00B7 " + t.reasonText(), color);
 				String why = t.reasonText();
 				if (why.length() > 42) why = why.substring(0, 40) + "…";
 				Render3D.importantLabel(c.add(0, 1.6, 0), "#" + (i + 1) + " " + Math.round(t.score) + " §7" + why + " • " + WorldUtil.distance(cam.distanceTo(c)), color, 1f);

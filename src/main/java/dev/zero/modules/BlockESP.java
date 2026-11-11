@@ -196,6 +196,7 @@ public class BlockESP extends ScanningModule {
 			int line = style.get() == Style.FILL ? 0 : ColorUtil.withAlpha(base, (int) (230 * edge));
 			AABB box = new AABB(e.pos).deflate(0.002);
 			Render3D.box(box, fill, line, lineWidth.getFloat(), walls);
+			if (Render3D.look(box)) Render3D.lookText(state.getBlock().getName().getString(), base);
 		}
 		if (tracers.get()) {
 			int n = Math.min(limit, maxTracers.getInt());

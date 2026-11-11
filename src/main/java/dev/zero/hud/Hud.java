@@ -88,6 +88,7 @@ public final class Hud {
 				}
 			}
 		}
+		LookInfo.render(g);
 		Notifications.render(g);
 	}
 

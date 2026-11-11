@@ -37,6 +37,7 @@ public final class ClientSettings {
 	public static final NumberSetting DETAIL_DISTANCE = add(new NumberSetting("Detail Distance", "Beyond this, filled ESP boxes skip their outlines (512 = always outline)", 64, 16, 512, 16, "m"));
 	public static final BoolSetting PERF_HUD = add(new BoolSetting("Perf HUD", "Show how many ms per frame ZERØ itself uses", false));
 	public static final NumberSetting SCAN_BUDGET = add(new NumberSetting("Scan Budget", "Max ms per tick spent analysing chunks (auto-lowered when FPS drops)", 3, 0.5, 8, 0.5, "ms"));
+	public static final BoolSetting LOOK_INFO = add(new BoolSetting("Look Info", "Label next to the crosshair naming the highlighted thing you aim at", true));
 	public static final BoolSetting STREAMER = add(new BoolSetting("Hide Coords", "Hide coordinates on the HUD (streamer mode)", false));
 
 	private ClientSettings() {}

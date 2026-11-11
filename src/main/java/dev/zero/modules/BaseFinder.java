@@ -426,7 +426,13 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 			int color = r.kind.color;
 			if (highlightChunks.get() && r.bounds != null) Render3D.box(r.bounds, ColorUtil.withAlpha(color, 28), ColorUtil.withAlpha(color, 200), 2f, true);
 			if (highlightBlocks.get()) {
-				for (BlockPos p : r.highlights) if (RULES.containsKey(mc.level.getBlockState(p).getBlock())) Render3D.box(new AABB(p).deflate(0.04), ColorUtil.withAlpha(color, 45), ColorUtil.withAlpha(color, 170), 1.2f, true);
+				for (BlockPos p : r.highlights) {
+					BlockState st = mc.level.getBlockState(p);
+					if (!RULES.containsKey(st.getBlock())) continue;
+					AABB hb = new AABB(p).deflate(0.04);
+					Render3D.box(hb, ColorUtil.withAlpha(color, 45), ColorUtil.withAlpha(color, 170), 1.2f, true);
+					if (Render3D.look(hb)) Render3D.lookText(st.getBlock().getName().getString() + " \u00B7 " + r.kind.title, color);
+				}
 			}
 			if (tracers.get() && r.kind != Kind.POSSIBLE) Render3D.tracer(Vec3.atCenterOf(r.center), ColorUtil.withAlpha(color, 210), 1.8f);
 			Render3D.label(Vec3.atCenterOf(r.center).add(0, r.bounds != null ? r.bounds.maxY - r.center.getY() + 0.6 : 1.5, 0),

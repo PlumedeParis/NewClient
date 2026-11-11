@@ -177,6 +177,13 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 		};
 	}
 
+	private String storageName(Entry e) {
+		BlockState state = mc.level.getBlockState(e.pos);
+		String name = state.getBlock().getName().getString();
+		if (state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) name = "Large " + name;
+		return name;
+	}
+
 	private void draw(AABB box, int base, double dist) {
 		float edge = (float) Mth.clamp((range.get() - dist) / 16.0, 0, 1);
 		int fill = style.get() == Style.OUTLINE ? 0 : ColorUtil.withAlpha(base, (int) (fillAlpha.get() * edge));
@@ -198,6 +205,7 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 				shown++;
 				int c = color(s);
 				draw(s.box, c, d);
+				if (Render3D.look(s.box)) Render3D.lookText(storageName(s), c);
 				if (tracers.get()) Render3D.tracer(s.box.getCenter(), ColorUtil.withAlpha(c, 180), 1.4f);
 			}
 			if (chunkCounts.get() && shown > 0 && list.size() >= countThreshold.getInt()) {
@@ -214,6 +222,7 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 				AABB bb = en.getBoundingBox().move(
 					Mth.lerp(pt, en.xo, en.getX()) - en.getX(), Mth.lerp(pt, en.yo, en.getY()) - en.getY(), Mth.lerp(pt, en.zo, en.getZ()) - en.getZ());
 				draw(bb, chestColor.get(), d);
+				if (Render3D.look(bb)) Render3D.lookText(en.getName().getString(), chestColor.get());
 			}
 		}
 	}

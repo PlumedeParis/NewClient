@@ -57,8 +57,67 @@ public final class Render3D {
 	private static double labelRange = 160;
 	private static double lodDistSq = 64 * 64;
 
+	// ---- "What am I looking at" (crosshair label) ------------------------------------------------
+	private static double lookT, lookVol;
+	private static String lookText;
+	private static int lookColor;
+
+	/**
+	 * Tests the crosshair ray against a box (works through walls). Returns true when this box is
+	 * now the closest thing under the crosshair; the caller then names it with {@link #lookText}.
+	 */
+	public static boolean look(AABB box) {
+		double m = 0.04;
+		double minX = box.minX - m - cam.x, minY = box.minY - m - cam.y, minZ = box.minZ - m - cam.z;
+		double maxX = box.maxX + m - cam.x, maxY = box.maxY + m - cam.y, maxZ = box.maxZ + m - cam.z;
+		double t0 = 0, t1 = 512;
+		double[] mins = {minX, minY, minZ}, maxs = {maxX, maxY, maxZ}, dir = {fx, fy, fz};
+		for (int a = 0; a < 3; a++) {
+			if (Math.abs(dir[a]) < 1e-9) {
+				if (mins[a] > 0 || maxs[a] < 0) return false;
+				continue;
+			}
+			double inv = 1 / dir[a];
+			double ta = mins[a] * inv, tb = maxs[a] * inv;
+			if (ta > tb) {
+				double tmp = ta;
+				ta = tb;
+				tb = tmp;
+			}
+			t0 = Math.max(t0, ta);
+			t1 = Math.min(t1, tb);
+			if (t0 > t1) return false;
+		}
+		// Closest wins; for overlapping boxes at about the same distance the smaller (more specific)
+		// one wins, e.g. a spawner inside a BaseRadar target marker.
+		double vol = (maxX - minX) * (maxY - minY) * (maxZ - minZ);
+		boolean better = t0 < lookT - 0.75 || (t0 < lookT + 0.75 && vol < lookVol);
+		if (!better) return false;
+		lookT = t0;
+		lookVol = vol;
+		return true;
+	}
+
+	public static void lookText(String text, int color) {
+		lookText = text;
+		lookColor = color;
+	}
+
+	/** Distance of the current best crosshair hit (for picks done outside {@link #look}). */
+	public static double lookDistance() { return lookT; }
+
+	public static void lookAt(double distance, String text, int color) {
+		lookT = distance;
+		lookVol = 1;
+		lookText = text;
+		lookColor = color;
+	}
+
 	/** Called before modules render. */
 	public static void begin() {
+		lookT = Double.MAX_VALUE;
+		lookVol = Double.MAX_VALUE;
+		lookText = null;
 		Minecraft mc = Minecraft.getInstance();
 		Camera camera = mc.gameRenderer.getMainCamera();
 		cam = camera.position();
@@ -101,6 +160,7 @@ public final class Render3D {
 
 	/** Draws everything queued this frame. */
 	public static void flush(MultiBufferSource.BufferSource buffers) {
+		dev.zero.hud.LookInfo.set(lookText, lookColor, lookT);
 		PoseStack poseStack = new PoseStack();
 		PoseStack.Pose pose = poseStack.last();
 		for (int pass = 0; pass < 2; pass++) {

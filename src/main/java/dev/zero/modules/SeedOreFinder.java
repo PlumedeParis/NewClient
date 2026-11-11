@@ -9,6 +9,7 @@ import dev.zero.render.Render3D;
 import dev.zero.seed.OrePredictor;
 import dev.zero.seed.SeedWorld;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.EnumSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.setting.TextSetting;
 import dev.zero.util.BlockColors;
@@ -41,6 +42,9 @@ import java.util.Set;
  */
 public class SeedOreFinder extends Module {
 	private final TextSetting seed = add(new TextSetting("Seed", "World seed (number or text). Must be the server's real seed", "", "Type the world seed...", 40));
+	public enum OreType { BOTH, NORMAL_ONLY, DEEPSLATE_ONLY }
+
+	private final EnumSetting<OreType> oreType = add(new EnumSetting<>("Ore Type", "Normal ores (stone), deepslate ores, or both. Nether ores are not affected", OreType.BOTH));
 	private final BoolSetting diamonds = add(new BoolSetting("Diamonds", "Diamond ore", true));
 	private final BoolSetting debris = add(new BoolSetting("Ancient Debris", "Netherite (Nether)", true));
 	private final BoolSetting emeralds = add(new BoolSetting("Emeralds", "Emerald ore (mountains)", true));
@@ -76,6 +80,8 @@ public class SeedOreFinder extends Module {
 
 	private int count;
 
+	public Set<Block> wantedBlocks() { return wanted(); }
+
 	private Set<Block> wanted() {
 		Set<Block> s = new HashSet<>();
 		if (diamonds.get()) s.addAll(List.of(Blocks.DIAMOND_ORE, Blocks.DEEPSLATE_DIAMOND_ORE));
@@ -88,6 +94,14 @@ public class SeedOreFinder extends Module {
 		if (copper.get()) s.addAll(List.of(Blocks.COPPER_ORE, Blocks.DEEPSLATE_COPPER_ORE));
 		if (coal.get()) s.addAll(List.of(Blocks.COAL_ORE, Blocks.DEEPSLATE_COAL_ORE));
 		if (quartz.get()) s.add(Blocks.NETHER_QUARTZ_ORE);
+		if (oreType.get() != OreType.BOTH) {
+			boolean wantDeep = oreType.get() == OreType.DEEPSLATE_ONLY;
+			s.removeIf(b -> {
+				String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(b).getPath();
+				if (id.startsWith("nether_") || b == Blocks.ANCIENT_DEBRIS) return false;
+				return id.startsWith("deepslate_") != wantDeep;
+			});
+		}
 		return s;
 	}
 
@@ -239,7 +253,10 @@ public class SeedOreFinder extends Module {
 				fillA = 90;
 				lineA = 255;
 			}
-			Render3D.box(new AABB(v.p.pos()).deflate(0.06), ColorUtil.withAlpha(c, fillA), ColorUtil.withAlpha(c, lineA), v.real ? 1.8f : 1.2f, true);
+			AABB ob = new AABB(v.p.pos()).deflate(0.06);
+			Render3D.box(ob, ColorUtil.withAlpha(c, fillA), ColorUtil.withAlpha(c, lineA), v.real ? 1.8f : 1.2f, true);
+			if (Render3D.look(ob))
+				Render3D.lookText(v.p.block().getName().getString() + (confirmedHere ? " \u00B7 confirmed" : v.real ? " \u00B7 predicted" : " \u00B7 predicted (estimated terrain)"), c);
 		}
 		if (tracers.get()) for (int i = 0; i < Math.min(n, 10); i++) Render3D.tracer(Vec3.atCenterOf(list.get(i).p.pos()), ColorUtil.withAlpha(BlockColors.get(list.get(i).p.block()), 200), 1.5f);
 		if (labels.get()) {

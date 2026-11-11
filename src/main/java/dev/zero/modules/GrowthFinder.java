@@ -90,7 +90,13 @@ public class GrowthFinder extends ChunkFinderModule<GrowthFinder.Growth> impleme
 			int color = ColorUtil.lerp(0xFF7CE38B, 0xFF00FFA2, Math.min(1f, g.grown() / 30f));
 			int cx = net.minecraft.world.level.ChunkPos.getX(e.getLongKey()) << 4, cz = net.minecraft.world.level.ChunkPos.getZ(e.getLongKey()) << 4;
 			if (chunkBox.get()) Render3D.box(new AABB(cx, g.minY() - 1, cz, cx + 16, g.maxY() + 2, cz + 16), ColorUtil.withAlpha(color, 18), ColorUtil.withAlpha(color, 160), 1.4f, true);
-			if (highlight.get()) for (BlockPos p : g.tops()) if (mc.level.getBlockState(p).is(Blocks.KELP)) Render3D.box(new AABB(p).deflate(0.1), ColorUtil.withAlpha(color, 50), ColorUtil.withAlpha(color, 200), 1f, true);
+			if (highlight.get()) for (BlockPos p : g.tops()) {
+				BlockState st = mc.level.getBlockState(p);
+				if (!st.is(Blocks.KELP)) continue;
+				AABB kb = new AABB(p).deflate(0.1);
+				Render3D.box(kb, ColorUtil.withAlpha(color, 50), ColorUtil.withAlpha(color, 200), 1f, true);
+				if (Render3D.look(kb)) Render3D.lookText("Kelp age " + st.getValue(GrowingPlantHeadBlock.AGE) + " \u00B7 grown past natural age", color);
+			}
 			Render3D.label(new Vec3(cx + 8, g.maxY() + 2.5, cz + 8), "GROWN KELP " + g.grown() + " §7" + WorldUtil.distance(cam.distanceTo(Vec3.atCenterOf(g.center()))), color, 1f);
 		}
 	}

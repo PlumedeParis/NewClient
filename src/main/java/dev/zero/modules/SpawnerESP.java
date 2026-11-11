@@ -145,7 +145,12 @@ public class SpawnerESP extends ScanningModule {
 				if (!now.is(Blocks.SPAWNER) && !now.is(Blocks.TRIAL_SPAWNER)) continue; // broken this frame
 				int c = colorOf(e);
 				float edge = (float) Mth.clamp((max - d) / 16.0, 0, 1);
-				Render3D.box(new AABB(e.pos), ColorUtil.withAlpha(c, (int) (fillAlpha.get() * edge)), ColorUtil.withAlpha(c, (int) (240 * edge)), lineWidth.getFloat(), true);
+				AABB sb = new AABB(e.pos);
+				Render3D.box(sb, ColorUtil.withAlpha(c, (int) (fillAlpha.get() * edge)), ColorUtil.withAlpha(c, (int) (240 * edge)), lineWidth.getFloat(), true);
+				if (Render3D.look(sb)) {
+					String mob = e.mob.replace('_', ' ');
+					Render3D.lookText(e.trial ? "Trial Spawner" : Character.toUpperCase(mob.charAt(0)) + mob.substring(1) + " Spawner", c);
+				}
 				if (tracers.get()) Render3D.tracer(center, ColorUtil.withAlpha(c, 200), 1.6f);
 				if (labels.get()) {
 					String name = e.mob.replace('_', ' ');

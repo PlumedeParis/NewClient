@@ -78,6 +78,44 @@ public class XRay extends Module {
 		if (mc.levelRenderer != null) mc.levelRenderer.allChanged();
 	}
 
+	/** Crosshair label for X-Ray: walks the aim ray block by block and names the first visible target. */
+	public void pickLookTarget() {
+		if (mc.level == null) return;
+		var camera = mc.gameRenderer.getMainCamera();
+		net.minecraft.world.phys.Vec3 o = camera.position();
+		var f = camera.forwardVector();
+		double dx = f.x(), dy = f.y(), dz = f.z();
+		int x = net.minecraft.util.Mth.floor(o.x), y = net.minecraft.util.Mth.floor(o.y), z = net.minecraft.util.Mth.floor(o.z);
+		int sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, sz = dz > 0 ? 1 : -1;
+		double tdx = Math.abs(1 / dx), tdy = Math.abs(1 / dy), tdz = Math.abs(1 / dz);
+		double tx = (dx > 0 ? (x + 1 - o.x) : (o.x - x)) * tdx;
+		double ty = (dy > 0 ? (y + 1 - o.y) : (o.y - y)) * tdy;
+		double tz = (dz > 0 ? (z + 1 - o.z) : (o.z - z)) * tdz;
+		double t = 0, max = Math.min(96, dev.zero.render.Render3D.lookDistance());
+		BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+		while (t <= max) {
+			p.set(x, y, z);
+			BlockState st = mc.level.getBlockState(p);
+			if (isTarget(st) && (!exposed || isExposed(p, mc.level))) {
+				dev.zero.render.Render3D.lookAt(t, st.getBlock().getName().getString() + " \u00B7 x-ray", dev.zero.util.BlockColors.get(st.getBlock()));
+				return;
+			}
+			if (tx < ty && tx < tz) {
+				t = tx;
+				tx += tdx;
+				x += sx;
+			} else if (ty < tz) {
+				t = ty;
+				ty += tdy;
+				y += sy;
+			} else {
+				t = tz;
+				tz += tdz;
+				z += sz;
+			}
+		}
+	}
+
 	// ---- Hooks used by the rendering mixins (any thread) --------------------------------------
 
 	public static boolean isActive() { return active; }
