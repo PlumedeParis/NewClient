@@ -124,6 +124,25 @@ public class ZeroGameTest implements FabricClientGameTest {
 			ctx.getInput().holdKeyFor(o -> o.keyJump, 16);
 			ctx.waitTicks(10);
 			ctx.takeScreenshot("02c_storage");
+			// Performance: everything on at once
+			ctx.runOnClient(mc -> {
+				ModuleManager.amethystFinder.setEnabled(true);
+				ModuleManager.growthFinder.setEnabled(true);
+				ModuleManager.rotatedDeepslate.setEnabled(true);
+				ModuleManager.spawnerFinder.setEnabled(true);
+				ModuleManager.tunnelFinder.setEnabled(true);
+				ModuleManager.baseRadar.setEnabled(true);
+				ModuleManager.spawnerEsp.setEnabled(true);
+				var esp = ModuleManager.blockEsp;
+				esp.blocks.set(new java.util.LinkedHashSet<>(java.util.List.of(net.minecraft.world.level.block.Blocks.GRASS_BLOCK, net.minecraft.world.level.block.Blocks.SMOOTH_STONE, net.minecraft.world.level.block.Blocks.DIAMOND_ORE)));
+				dev.zero.util.Perf.reset();
+			});
+			ctx.waitTicks(200);
+			ctx.computeOnClient(mc -> {
+				System.out.printf("[ZERO-PERF] render3D=%.2f ms/frame (flush %.2f)  scan=%.2f ms/tick  fps=%d  modules=%s%n", dev.zero.util.Perf.renderMs(), dev.zero.util.Perf.flushMs(), dev.zero.util.Perf.scanMs(), mc.getFps(), dev.zero.util.Perf.MODULE_MS);
+				return null;
+			});
+			ctx.runOnClient(mc -> ModuleManager.blockEsp.blocks.reset());
 			// Hunt-only view
 			ctx.runOnClient(mc -> {
 				ModuleManager.blockEsp.setEnabled(false);

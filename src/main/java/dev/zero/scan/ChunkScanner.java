@@ -24,7 +24,6 @@ import java.util.Map;
 public final class ChunkScanner {
 	private static final LongOpenHashSet LOADED = new LongOpenHashSet();
 	private static final Map<ScanningModule, LongLinkedOpenHashSet> QUEUES = new IdentityHashMap<>();
-	private static final long BUDGET_NANOS = 4_000_000L; // 4 ms per tick max
 
 	private ChunkScanner() {}
 
@@ -98,8 +97,12 @@ public final class ChunkScanner {
 		ClientLevel level = mc.level;
 		if (level == null || QUEUES.isEmpty()) return;
 		long start = System.nanoTime();
+		// Time budget from the Client panel; halved automatically while FPS is low.
+		double ms = dev.zero.config.ClientSettings.SCAN_BUDGET.get();
+		if (mc.getFps() < 30) ms /= 2;
+		long budget = (long) (ms * 1_000_000L);
 		boolean worked = true;
-		while (worked && System.nanoTime() - start < BUDGET_NANOS) {
+		while (worked && System.nanoTime() - start < budget) {
 			worked = false;
 			for (Map.Entry<ScanningModule, LongLinkedOpenHashSet> e : QUEUES.entrySet()) {
 				LongLinkedOpenHashSet q = e.getValue();

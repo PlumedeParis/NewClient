@@ -32,6 +32,11 @@ public final class ClientSettings {
 	public static final BoolSetting INFO_HUD = add(new BoolSetting("Info HUD", "Coords, nether coords, facing and FPS", true));
 	public static final BoolSetting NOTIFICATIONS = add(new BoolSetting("Notifications", "Animated toasts", true));
 	public static final BoolSetting TOGGLE_TOASTS = add(new BoolSetting("Toggle Toasts", "Toast when a module is toggled", true));
+	public static final NumberSetting MAX_LABELS = add(new NumberSetting("Max Labels", "Most 3D text labels drawn per frame (nearest first). Lower = more FPS", 40, 5, 200, 5));
+	public static final NumberSetting LABEL_RANGE = add(new NumberSetting("Label Range", "Labels farther than this are not drawn", 160, 32, 512, 16, "m"));
+	public static final NumberSetting DETAIL_DISTANCE = add(new NumberSetting("Detail Distance", "Beyond this, filled ESP boxes skip their outlines (512 = always outline)", 64, 16, 512, 16, "m"));
+	public static final BoolSetting PERF_HUD = add(new BoolSetting("Perf HUD", "Show how many ms per frame ZERØ itself uses", false));
+	public static final NumberSetting SCAN_BUDGET = add(new NumberSetting("Scan Budget", "Max ms per tick spent analysing chunks (auto-lowered when FPS drops)", 3, 0.5, 8, 0.5, "ms"));
 	public static final BoolSetting STREAMER = add(new BoolSetting("Hide Coords", "Hide coordinates on the HUD (streamer mode)", false));
 
 	private ClientSettings() {}

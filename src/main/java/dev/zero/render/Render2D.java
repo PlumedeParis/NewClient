@@ -4,6 +4,7 @@ import dev.zero.util.ColorUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
 
 /** Premium-looking 2D primitives built on GuiGraphics: anti-aliased rounded rects, glows, gradients. */
 public final class Render2D {
@@ -24,40 +25,48 @@ public final class Render2D {
 	public static void roundedRect(GuiGraphics g, int x, int y, int w, int h, int radius, int color, boolean roundTop, boolean roundBottom) {
 		if (w <= 0 || h <= 0 || ColorUtil.a(color) == 0) return;
 		int r = Math.min(radius, Math.min(w / 2, h / 2));
-		if (r <= 0) {
+		if (r <= 1) {
 			rect(g, x, y, w, h, color);
 			return;
 		}
+		ShapeTextures.ensure();
+		int half = ShapeTextures.SIZE / 2, tex = ShapeTextures.SIZE;
 		int top = roundTop ? r : 0, bottom = roundBottom ? r : 0;
+		// body
 		g.fill(x, y + top, x + w, y + h - bottom, color);
-		for (int i = 0; i < r; i++) {
-			double dy = r - i - 0.5;
-			double dx = Math.sqrt(Math.max(0, r * r - dy * dy));
-			double inset = r - dx;
-			int full = (int) Math.ceil(inset);
-			float frac = (float) (full - inset);
-			if (roundTop) cornerRow(g, x, y + i, w, full, frac, color);
-			if (roundBottom) cornerRow(g, x, y + h - 1 - i, w, full, frac, color);
+		if (roundTop) {
+			g.fill(x + r, y, x + w - r, y + r, color);
+			g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.CIRCLE, x, y, 0, 0, r, r, half, half, tex, tex, color);
+			g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.CIRCLE, x + w - r, y, half, 0, r, r, half, half, tex, tex, color);
+		}
+		if (roundBottom) {
+			g.fill(x + r, y + h - r, x + w - r, y + h, color);
+			g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.CIRCLE, x, y + h - r, 0, half, r, r, half, half, tex, tex, color);
+			g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.CIRCLE, x + w - r, y + h - r, half, half, r, r, half, half, tex, tex, color);
 		}
 	}
 
-	private static void cornerRow(GuiGraphics g, int x, int yy, int w, int full, float frac, int color) {
-		g.fill(x + full, yy, x + w - full, yy + 1, color);
-		if (frac > 0.02f && full > 0) {
-			int edge = ColorUtil.fade(color, frac);
-			g.fill(x + full - 1, yy, x + full, yy + 1, edge);
-			g.fill(x + w - full, yy, x + w - full + 1, yy + 1, edge);
-		}
-	}
-
-	/** Soft glow / drop shadow around a rounded rect. */
+	/** Soft glow / drop shadow around a rounded rect: a 9-slice of a pre-blurred texture. */
 	public static void glow(GuiGraphics g, int x, int y, int w, int h, int radius, int color, int size) {
-		int baseAlpha = ColorUtil.a(color);
-		for (int i = size; i >= 1; i--) {
-			float t = 1f - (float) i / (size + 1);
-			int a = Math.round(baseAlpha * t * t / size * 1.6f);
-			if (a <= 0) continue;
-			roundedRect(g, x - i, y - i, w + i * 2, h + i * 2, radius + i, ColorUtil.withAlpha(color, a));
+		if (ColorUtil.a(color) == 0 || size <= 0) return;
+		ShapeTextures.ensure();
+		int half = ShapeTextures.SIZE / 2, tex = ShapeTextures.SIZE;
+		int c = Math.min(size + radius, Math.min(w / 2 + size, h / 2 + size)); // corner size
+		int x0 = x - size, y0 = y - size, x1 = x + w + size, y1 = y + h + size;
+		int ew = x1 - x0 - 2 * c, eh = y1 - y0 - 2 * c;
+		var P = RenderPipelines.GUI_TEXTURED;
+		var T = ShapeTextures.GLOW;
+		g.blit(P, T, x0, y0, 0, 0, c, c, half, half, tex, tex, color);
+		g.blit(P, T, x1 - c, y0, half, 0, c, c, half, half, tex, tex, color);
+		g.blit(P, T, x0, y1 - c, 0, half, c, c, half, half, tex, tex, color);
+		g.blit(P, T, x1 - c, y1 - c, half, half, c, c, half, half, tex, tex, color);
+		if (ew > 0) {
+			g.blit(P, T, x0 + c, y0, half - 0.5f, 0, ew, c, 1, half, tex, tex, color);
+			g.blit(P, T, x0 + c, y1 - c, half - 0.5f, half, ew, c, 1, half, tex, tex, color);
+		}
+		if (eh > 0) {
+			g.blit(P, T, x0, y0 + c, 0, half - 0.5f, c, eh, half, 1, tex, tex, color);
+			g.blit(P, T, x1 - c, y0 + c, half, half - 0.5f, c, eh, half, 1, tex, tex, color);
 		}
 	}
 
@@ -82,13 +91,23 @@ public final class Render2D {
 		}
 	}
 
-	/** Horizontal gradient (GuiGraphics only has vertical gradients). */
+	/** Horizontal gradient (GuiGraphics only has vertical gradients): a tinted alpha ramp texture. */
 	public static void gradientH(GuiGraphics g, int x, int y, int w, int h, int left, int right) {
 		if (w <= 0 || h <= 0) return;
-		int step = Math.max(1, w / 48);
-		for (int i = 0; i < w; i += step) {
-			int c = ColorUtil.lerp(left, right, (i + step / 2f) / w);
-			g.fill(x + i, y, Math.min(x + w, x + i + step), y + h, c);
+		ShapeTextures.ensure();
+		int tex = ShapeTextures.SIZE;
+		int al = ColorUtil.a(left), ar = ColorUtil.a(right);
+		if (al == ar) {
+			// exact lerp: left underneath, right faded in on top
+			g.fill(x, y, x + w, y + h, left);
+			g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.RAMP, x, y, 0, 0, w, h, tex, 1, tex, 1, right);
+		} else if (ar == 0) {
+			g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.RAMP_REV, x, y, 0, 0, w, h, tex, 1, tex, 1, left);
+		} else if (al == 0) {
+			g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.RAMP, x, y, 0, 0, w, h, tex, 1, tex, 1, right);
+		} else {
+			int step = Math.max(1, w / 16);
+			for (int i = 0; i < w; i += step) g.fill(x + i, y, Math.min(x + w, x + i + step), y + h, ColorUtil.lerp(left, right, (i + step / 2f) / w));
 		}
 	}
 
@@ -139,7 +158,10 @@ public final class Render2D {
 
 	/** Filled circle (for radar dots / toggle knobs). */
 	public static void circle(GuiGraphics g, int cx, int cy, int radius, int color) {
-		roundedRect(g, cx - radius, cy - radius, radius * 2, radius * 2, radius, color);
+		if (radius <= 0) return;
+		ShapeTextures.ensure();
+		int tex = ShapeTextures.SIZE;
+		g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.CIRCLE, cx - radius, cy - radius, 0, 0, radius * 2, radius * 2, tex, tex, tex, tex, color);
 	}
 
 	public static boolean hovered(double mx, double my, int x, int y, int w, int h) {

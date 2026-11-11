@@ -103,6 +103,7 @@ public class SeedOreFinder extends Module {
 
 	@Override
 	protected void onDisable() {
+		sortedCache = null;
 		predictor.unconfigure();
 		verified.clear();
 		confirmed = mismatched = 0;
@@ -131,6 +132,7 @@ public class SeedOreFinder extends Module {
 		predictor.configure(s, dim.equals("the_nether"), mc.level.getMinY(), mc.level.getHeight());
 		if (!predictor.ready()) return;
 		tick++;
+		if (tick % 5 == 0) refreshCache();
 
 		ChunkPos center = mc.player.chunkPosition();
 		int r = radius.getInt();
@@ -184,9 +186,10 @@ public class SeedOreFinder extends Module {
 
 	private record Visible(SeedWorld.Prediction p, double dist, boolean real) {}
 
-	@Override
-	public void onRender3D(float pt) {
-		if (!predictor.ready()) return;
+	private List<Visible> sortedCache;
+
+	/** Rebuilt a few times per second instead of every frame. */
+	private void refreshCache() {
 		Set<Block> wanted = wanted();
 		Vec3 cam = WorldUtil.cameraPos();
 		double max = (radius.get() + 1) * 16;
@@ -199,20 +202,34 @@ public class SeedOreFinder extends Module {
 				if (v != null && v == 2) continue; // visibly something else
 				double d = Math.sqrt(p.pos().distToCenterSqr(cam));
 				if (d > max) continue;
-				if (hideMined.get() && mc.level.isLoaded(p.pos())) {
-					// Mined just now? Hide the box instantly (air / fluid where the ore was).
-					BlockState now = mc.level.getBlockState(p.pos());
-					if (now.isAir() || !now.getFluidState().isEmpty()) {
-						verified.put(p.pos(), 3);
-						continue;
-					}
-				}
 				list.add(new Visible(p, d, res.realTerrain()));
 			}
 		}
-		count = list.size();
 		list.sort((a, b) -> Double.compare(a.dist, b.dist));
-		int n = Math.min(list.size(), 2500);
+		if (list.size() > 3000) list = new ArrayList<>(list.subList(0, 3000));
+		sortedCache = list;
+	}
+
+	@Override
+	public void onRender3D(float pt) {
+		if (!predictor.ready()) return;
+		if (sortedCache == null) refreshCache();
+		List<Visible> list = new ArrayList<>(Math.min(sortedCache.size(), 2500));
+		boolean hide = hideMined.get();
+		for (Visible v : sortedCache) {
+			if (list.size() >= 2500) break;
+			if (hide) {
+				// Mined just now? Hide the box instantly (air / fluid where the ore was).
+				BlockState now = mc.level.getBlockState(v.p.pos());
+				if (now.isAir() || !now.getFluidState().isEmpty()) {
+					verified.put(v.p.pos(), 3);
+					continue;
+				}
+			}
+			list.add(v);
+		}
+		count = list.size();
+		int n = list.size();
 		for (int i = 0; i < n; i++) {
 			Visible v = list.get(i);
 			int c = BlockColors.get(v.p.block());

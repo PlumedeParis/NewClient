@@ -282,7 +282,7 @@ public class BaseRadar extends Module {
 				Render3D.box(new AABB(t.pos).inflate(0.3), ColorUtil.withAlpha(color, 70), ColorUtil.withAlpha(color, 255), 2f, true);
 				String why = t.reasonText();
 				if (why.length() > 42) why = why.substring(0, 40) + "…";
-				Render3D.label(c.add(0, 1.6, 0), "#" + (i + 1) + " " + Math.round(t.score) + " §7" + why + " • " + WorldUtil.distance(cam.distanceTo(c)), color, 1f);
+				Render3D.importantLabel(c.add(0, 1.6, 0), "#" + (i + 1) + " " + Math.round(t.score) + " §7" + why + " • " + WorldUtil.distance(cam.distanceTo(c)), color, 1f);
 				if (i == 0 && tracer.get()) Render3D.tracer(c, ColorUtil.withAlpha(color, 220), 2f);
 			} else if (others.get()) {
 				int color = t.checked ? 0xFF6B7280 : 0xFF94A3B8;

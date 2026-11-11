@@ -80,13 +80,16 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 				for (int z = 0; z < 16; z++)
 					for (int x = 0; x < 16; x++) g[idx(x + 1, sy + y, z + 1)] = cell(s.getBlockState(x, y, z));
 		}
-		BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+		// 1-block border from the 4 neighbouring chunks, read straight from their sections.
+		int cx = chunk.getPos().x, cz = chunk.getPos().z;
+		LevelChunkSection[] west = neighbour(cx - 1, cz), east = neighbour(cx + 1, cz), north = neighbour(cx, cz - 1), south = neighbour(cx, cz + 1);
 		for (int ly = 0; ly < height; ly++) {
-			for (int a = -1; a <= 16; a++) {
-				g[idx(0, ly, a + 1)] = cell(mc.level.getBlockState(m.set(bx - 1, ly + minY, bz + a)));
-				g[idx(17, ly, a + 1)] = cell(mc.level.getBlockState(m.set(bx + 16, ly + minY, bz + a)));
-				g[idx(a + 1, ly, 0)] = cell(mc.level.getBlockState(m.set(bx + a, ly + minY, bz - 1)));
-				g[idx(a + 1, ly, 17)] = cell(mc.level.getBlockState(m.set(bx + a, ly + minY, bz + 16)));
+			int si = ly >> 4, sy = ly & 15;
+			for (int a = 0; a < 16; a++) {
+				g[idx(0, ly, a + 1)] = border(west, si, 15, sy, a);
+				g[idx(17, ly, a + 1)] = border(east, si, 0, sy, a);
+				g[idx(a + 1, ly, 0)] = border(north, si, a, sy, 15);
+				g[idx(a + 1, ly, 17)] = border(south, si, a, sy, 0);
 			}
 		}
 		int[] surface = new int[256];
@@ -103,6 +106,19 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 			report(chunk.getPos(), BlockPos.containing(b.getCenter()), "Dug passages", segs.size() + " (" + summary(segs) + ")", 0xFFFFD166);
 		}
 		return new Passages(segs);
+	}
+
+	private LevelChunkSection[] neighbour(int cx, int cz) {
+		LevelChunk c = mc.level.getChunkSource().getChunk(cx, cz, net.minecraft.world.level.chunk.status.ChunkStatus.FULL, false);
+		return c == null ? null : c.getSections();
+	}
+
+	/** Unloaded neighbours count as solid, so their edge never creates fake passages. */
+	private static byte border(LevelChunkSection[] secs, int si, int x, int y, int z) {
+		if (secs == null || si >= secs.length) return 1;
+		LevelChunkSection s = secs[si];
+		if (s.hasOnlyAir()) return 0;
+		return cell(s.getBlockState(x, y, z));
 	}
 
 	private static String summary(List<Segment> segs) {

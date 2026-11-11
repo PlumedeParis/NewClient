@@ -49,6 +49,14 @@ public final class Hud {
 		if (ClientSettings.WATERMARK.get()) watermark(g, mc);
 		if (ClientSettings.ARRAY_LIST.get()) arrayList(g);
 		if (ClientSettings.INFO_HUD.get()) infoPanel(g, mc);
+		if (ClientSettings.PERF_HUD.get()) {
+			String perf = String.format(Locale.ROOT, "ZER\u00D8  3D %.1fms  HUD %.1fms  scan %.1fms", dev.zero.util.Perf.renderMs(),
+				dev.zero.util.Perf.MODULE_MS.getOrDefault("_hud", 0.0), dev.zero.util.Perf.scanMs());
+			int w = Render2D.width(perf) + 10;
+			int[] p = slot(w, 13);
+			Render2D.roundedRect(g, p[0], p[1], w, 13, 4, 0xC8101016);
+			Render2D.text(g, perf, p[0] + 5, p[1] + 3, 0xFFB4B4C8, false);
+		}
 
 		for (Module m : ModuleManager.all()) {
 			if (m.isEnabled()) {

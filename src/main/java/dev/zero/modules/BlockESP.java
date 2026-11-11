@@ -57,8 +57,25 @@ public class BlockESP extends ScanningModule {
 	private final it.unimi.dsi.fastutil.longs.LongOpenHashSet dirty = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
 	private int tick;
 
+	private List<Entry> sortedCache;
+
+	private void refreshCache() {
+		Vec3 cam = WorldUtil.cameraPos();
+		double maxSq = (range.get() + 8) * (range.get() + 8);
+		List<Entry> visible = new ArrayList<>();
+		for (List<BlockPos> list : found.values())
+			for (BlockPos p : list) {
+				double d = p.distToCenterSqr(cam);
+				if (d <= maxSq) visible.add(new Entry(p, d));
+			}
+		visible.sort((a, b) -> Double.compare(a.dist, b.dist));
+		if (visible.size() > maxBlocks.getInt()) visible = new ArrayList<>(visible.subList(0, maxBlocks.getInt()));
+		sortedCache = visible;
+	}
+
 	@Override
 	public void onTick() {
+		if (tick % 5 == 0) refreshCache();
 		if (++tick % 5 == 0 && !dirty.isEmpty()) {
 			for (long key : dirty.toLongArray()) {
 				LevelChunk c = mc.level.getChunkSource().getChunk(ChunkPos.getX(key), ChunkPos.getZ(key), net.minecraft.world.level.chunk.status.ChunkStatus.FULL, false);
@@ -149,6 +166,7 @@ public class BlockESP extends ScanningModule {
 
 	@Override
 	public void clearAll() {
+		sortedCache = null;
 		dirty.clear();
 		found.clear();
 		total = 0;
@@ -160,16 +178,10 @@ public class BlockESP extends ScanningModule {
 	public void onRender3D(float partialTick) {
 		if (found.isEmpty() || mc.level == null) return;
 		Vec3 cam = WorldUtil.cameraPos();
-		double maxSq = range.get() * range.get();
-		List<Entry> visible = new ArrayList<>();
-		for (List<BlockPos> list : found.values()) {
-			for (BlockPos p : list) {
-				double d = p.distToCenterSqr(cam);
-				if (d <= maxSq) visible.add(new Entry(p, d));
-			}
-		}
+		// The nearest-first list is rebuilt 4x per second (onTick), not every frame.
+		if (sortedCache == null) refreshCache();
+		List<Entry> visible = sortedCache;
 		if (visible.isEmpty()) return;
-		visible.sort((a, b) -> Double.compare(a.dist, b.dist));
 		int limit = Math.min(visible.size(), maxBlocks.getInt());
 		boolean walls = throughWalls.get();
 		for (int i = 0; i < limit; i++) {
@@ -178,7 +190,8 @@ public class BlockESP extends ScanningModule {
 			if (!targetCache.contains(state.getBlock())) continue; // mined / changed this frame
 			int base = colorMode.get() == ColorMode.CUSTOM ? color.get() : BlockColors.get(state.getBlock());
 			// Fade boxes out smoothly near the edge of the range.
-			float edge = (float) Math.min(1, (range.get() - Math.sqrt(e.dist)) / 16.0);
+			float edge = (float) Math.min(1, (range.get() - Math.sqrt(e.pos.distToCenterSqr(cam))) / 16.0);
+			if (edge <= 0) continue;
 			int fill = style.get() == Style.OUTLINE ? 0 : ColorUtil.withAlpha(base, (int) (fillAlpha.get() * edge));
 			int line = style.get() == Style.FILL ? 0 : ColorUtil.withAlpha(base, (int) (230 * edge));
 			AABB box = new AABB(e.pos).deflate(0.002);

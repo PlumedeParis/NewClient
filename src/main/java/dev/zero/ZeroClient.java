@@ -8,6 +8,7 @@ import dev.zero.hud.Hud;
 import dev.zero.module.Module;
 import dev.zero.module.ModuleManager;
 import dev.zero.render.Render3D;
+import dev.zero.util.Perf;
 import dev.zero.scan.ChunkScanner;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.fabricmc.api.ClientModInitializer;
@@ -54,7 +55,11 @@ public final class ZeroClient implements ClientModInitializer {
 			lastLevel = world;
 		});
 		WorldRenderEvents.END_MAIN.register(context -> render3D((MultiBufferSource.BufferSource) context.consumers()));
-		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), Hud::render);
+		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), (g, d) -> {
+			long t = System.nanoTime();
+			Hud.render(g, d);
+			Perf.module("_hud", System.nanoTime() - t);
+		});
 		// Custom crosshair: draws ZERØ's design instead of the vanilla one while enabled.
 		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (graphics, delta) -> {
 			if (ModuleManager.crosshair != null && ModuleManager.crosshair.isEnabled()) ModuleManager.crosshair.renderCrosshair(graphics);
@@ -72,7 +77,9 @@ public final class ZeroClient implements ClientModInitializer {
 		}
 		handleKeys(mc);
 		if (mc.level != null && mc.player != null) {
+			long t0 = System.nanoTime();
 			ChunkScanner.tick();
+			Perf.scan(System.nanoTime() - t0);
 			for (Module m : ModuleManager.all()) {
 				if (m.isEnabled()) {
 					try {
@@ -118,16 +125,22 @@ public final class ZeroClient implements ClientModInitializer {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.level == null || mc.player == null) return;
 		float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
+		long t0 = System.nanoTime();
 		Render3D.begin();
 		for (Module m : ModuleManager.all()) {
 			if (m.isEnabled()) {
 				try {
+					long tm = System.nanoTime();
 					m.onRender3D(pt);
+					Perf.module(m.getName(), System.nanoTime() - tm);
 				} catch (Exception e) {
 					LOGGER.error("Error rendering {}", m.getName(), e);
 				}
 			}
 		}
+		long tf = System.nanoTime();
 		Render3D.flush(buffers);
+		Perf.flush(System.nanoTime() - tf);
+		Perf.render(System.nanoTime() - t0);
 	}
 }

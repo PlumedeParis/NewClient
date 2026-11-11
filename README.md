@@ -84,6 +84,7 @@ X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **S
 * **Right Shift** opens the GUI. Left click: toggle. Right click: settings. Middle click: bind. Start typing to search.
 * **★ Finds**: every base, stash and sus chunk saved on the current server. You can copy coords and delete entries.
 * **HUD**: watermark, module list, coords plus converted Nether/Overworld coords, nearby bases, player radar and toasts.
+* **Performance options** (Client panel): Max Labels, Label Range, Detail Distance (far boxes skip outlines), Scan Budget (auto-halved below 30 FPS) and a Perf HUD showing ZERØ's own cost per frame.
 * **Client panel**: accent colors and chroma, opacity, blur, HUD toggles, and "Hide Coords" streamer mode.
 
 Everything is saved to `.minecraft/config/zero/` (`config.json`, plus `finds/<server>.json` and `finds/<server>.log`).
