@@ -1,6 +1,7 @@
 package dev.zero.modules;
 
 import dev.zero.module.Category;
+import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
@@ -23,7 +24,7 @@ import java.util.List;
  * 1-wide 2-high tunnels with walls, floor and ceiling, and 1-wide staircases going down.
  * Natural caves are irregular, so long perfectly straight 1-wide passages are man-made.
  */
-public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> {
+public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> implements HuntTarget.Provider {
 	private final BoolSetting shafts = add(new BoolSetting("Shafts", "1x1 vertical holes dug straight down", true)).onChange(this::rescan);
 	private final NumberSetting shaftLength = add(new NumberSetting("Shaft Length", "Min depth of a shaft", 8, 4, 64, 1)).onChange(this::rescan);
 	private final BoolSetting tunnels = add(new BoolSetting("Tunnels", "1-wide, 2-high straight tunnels", true)).onChange(this::rescan);
@@ -232,4 +233,14 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> {
 			}
 		}
 	}
+
+	@Override
+	public void collectTargets(List<HuntTarget> out) {
+		for (Passages p : results.values()) {
+			if (p.segments().isEmpty()) continue;
+			out.add(new HuntTarget(BlockPos.containing(p.segments().get(0).box().getCenter()), Math.min(55, 15 + p.segments().size() * 12),
+				"Dug passages (" + summary(p.segments()) + ")", 0xFFFFD166));
+		}
+	}
+
 }

@@ -5,6 +5,7 @@ import dev.zero.config.FindsStore.Find;
 import dev.zero.config.FindsStore.Kind;
 import dev.zero.hud.Notifications;
 import dev.zero.module.Category;
+import dev.zero.module.HuntTarget;
 import dev.zero.module.ScanningModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
@@ -53,7 +54,7 @@ import java.util.Set;
  * <p>
  * 100% passive: analyses chunk data already received.
  */
-public class SusChunk extends ScanningModule {
+public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	public enum AgeOverlay { OFF, NEW, OLD, BOTH }
 
 	private final NumberSetting minScore = add(new NumberSetting("Min Score", "Score needed to highlight a chunk", 8, 2, 100, 1)).onChange(this::rescan);
@@ -335,6 +336,7 @@ public class SusChunk extends ScanningModule {
 		if (FindsStore.near(dim, f.getX(), f.getZ(), 48, Kind.SUS) != null) return;
 		String reasons = reasons(r);
 		if (save.get()) FindsStore.add(new Find(Kind.SUS, f.getX(), f.getY(), f.getZ(), dim, reasons, System.currentTimeMillis()), true);
+		if (BaseRadar.quietMode()) return;
 		if (notify.get()) {
 			Notifications.push("Sus chunk " + Math.round(r.score) + "pts", WorldUtil.fmt(f) + "  •  " + reasons, Notifications.Type.ALERT, 6000);
 			ChatUtil.info(Component.literal("Sus chunk ").withStyle(s -> s.withColor(Kind.SUS.color & 0xFFFFFF).withBold(true))
@@ -422,4 +424,11 @@ public class SusChunk extends ScanningModule {
 		Age a = ages.get(pos.toLong());
 		return a == null ? "?" : a.name().toLowerCase(Locale.ROOT);
 	}
+
+	@Override
+	public void collectTargets(List<HuntTarget> out) {
+		for (Result r : results.values())
+			if (r.focus != null) out.add(new HuntTarget(r.focus, Math.min(70, r.score), "Sus: " + reasons(r), 0xFFFF7AF5));
+	}
+
 }

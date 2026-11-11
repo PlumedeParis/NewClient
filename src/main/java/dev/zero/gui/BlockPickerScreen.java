@@ -230,7 +230,7 @@ public class BlockPickerScreen extends Screen {
 			onClose();
 			return true;
 		}
-		if (search.keyPressed(event.key())) return true;
+		if (search.keyPressed(event.key(), event.modifiers())) return true;
 		return super.keyPressed(event);
 	}
 

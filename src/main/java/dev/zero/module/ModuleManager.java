@@ -2,6 +2,7 @@ package dev.zero.module;
 
 import dev.zero.modules.AmethystFinder;
 import dev.zero.modules.BaseFinder;
+import dev.zero.modules.BaseRadar;
 import dev.zero.modules.GrowthFinder;
 import dev.zero.modules.RotatedDeepslate;
 import dev.zero.modules.SpawnerFinder;
@@ -38,6 +39,7 @@ public final class ModuleManager {
 	public static RotatedDeepslate rotatedDeepslate;
 	public static SpawnerFinder spawnerFinder;
 	public static TunnelFinder tunnelFinder;
+	public static BaseRadar baseRadar;
 
 	private ModuleManager() {}
 
@@ -56,6 +58,7 @@ public final class ModuleManager {
 		MODULES.add(rotatedDeepslate = new RotatedDeepslate());
 		MODULES.add(spawnerFinder = new SpawnerFinder());
 		MODULES.add(tunnelFinder = new TunnelFinder());
+		MODULES.add(baseRadar = new BaseRadar());
 		MODULES.add(playerDetector = new PlayerDetector());
 	}
 

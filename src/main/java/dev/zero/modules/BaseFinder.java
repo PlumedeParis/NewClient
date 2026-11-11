@@ -6,6 +6,7 @@ import dev.zero.config.FindsStore.Find;
 import dev.zero.config.FindsStore.Kind;
 import dev.zero.hud.Notifications;
 import dev.zero.module.Category;
+import dev.zero.module.HuntTarget;
 import dev.zero.module.ScanningModule;
 import dev.zero.render.Render2D;
 import dev.zero.render.Render3D;
@@ -55,7 +56,7 @@ import java.util.Set;
  * <p>
  * 100% passive: it only analyses chunk/entity data the server already sent.
  */
-public class BaseFinder extends ScanningModule {
+public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 	// ---- Settings -------------------------------------------------------------------------
 	private final NumberSetting baseScore = add(new NumberSetting("Base Score", "Score needed to flag a chunk as a base", 40, 10, 200, 1)).onChange(this::reclassifyAll);
 	private final NumberSetting stashSize = add(new NumberSetting("Stash Size", "Storage blocks in one chunk to flag a stash", 8, 3, 64, 1)).onChange(this::reclassifyAll);
@@ -389,6 +390,7 @@ public class BaseFinder extends ScanningModule {
 		String summary = summary(r);
 		if (save.get()) FindsStore.add(new Find(kind, c.getX(), c.getY(), c.getZ(), dim, summary, System.currentTimeMillis()), true);
 		if (kind == Kind.POSSIBLE) return; // weak matches are shown but don't spam alerts
+		if (BaseRadar.quietMode()) return;
 		if (notify.get()) Notifications.push(kind.title + " found!", WorldUtil.fmt(c) + "  •  " + summary, Notifications.Type.FOUND, 7000);
 		if (chat.get()) {
 			ChatUtil.info(Component.literal(kind.title + " ").withStyle(s -> s.withColor(kind.color & 0xFFFFFF).withBold(true))
@@ -471,4 +473,18 @@ public class BaseFinder extends ScanningModule {
 			Render2D.text(g, d, x + w - 6 - Render2D.width(d), ry, 0xFF9A9AB0, false);
 		}
 	}
+
+	@Override
+	public void collectTargets(List<HuntTarget> out) {
+		for (ChunkResult r : results.values()) {
+			if (r.kind == null) continue;
+			float s = switch (r.kind) {
+				case STASH -> 100;
+				case BASE -> 75;
+				default -> 30;
+			};
+			out.add(new HuntTarget(r.center, s + Math.min(40, r.score() / 5), r.kind.title, r.kind.color));
+		}
+	}
+
 }

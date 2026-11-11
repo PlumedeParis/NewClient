@@ -46,7 +46,11 @@ public abstract class ChunkFinderModule<R> extends ScanningModule {
 		R r = analyse(chunk);
 		if (r == null) results.remove(key);
 		else results.put(key, r);
+		resultsChanged();
 	}
+
+	/** Called whenever the per-chunk results change (scan, unload, clear). */
+	protected void resultsChanged() {}
 
 	@Override
 	public void onBlockChanged(LevelChunk chunk, BlockPos pos, BlockState oldState, BlockState newState) {
@@ -66,13 +70,14 @@ public abstract class ChunkFinderModule<R> extends ScanningModule {
 
 	@Override
 	public void onChunkUnload(ChunkPos pos) {
-		results.remove(pos.toLong());
+		if (results.remove(pos.toLong()) != null) resultsChanged();
 	}
 
 	@Override
 	public void clearAll() {
 		results.clear();
 		dirty.clear();
+		resultsChanged();
 	}
 
 	@Override
@@ -84,6 +89,7 @@ public abstract class ChunkFinderModule<R> extends ScanningModule {
 		String dim = WorldUtil.dimensionName(mc.level);
 		if (FindsStore.nearWithPrefix(dim, at.getX(), at.getZ(), 32, title + ":") != null) return;
 		if (save.get()) FindsStore.add(new FindsStore.Find(FindsStore.Kind.SUS, at.getX(), at.getY(), at.getZ(), dim, title + ": " + details, System.currentTimeMillis()), true);
+		if (dev.zero.modules.BaseRadar.quietMode()) return;
 		if (notify.get()) {
 			Notifications.push(title, WorldUtil.fmt(at) + "  •  " + details, Notifications.Type.FOUND, 6000);
 			ChatUtil.info(Component.literal(title + " ").withStyle(s -> s.withColor(color & 0xFFFFFF).withBold(true))

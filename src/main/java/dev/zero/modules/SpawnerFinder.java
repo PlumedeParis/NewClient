@@ -1,6 +1,7 @@
 package dev.zero.modules;
 
 import dev.zero.module.Category;
+import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
@@ -35,7 +36,7 @@ import java.util.Set;
  * or with no dungeon / mineshaft / fortress / stronghold / bastion around it, was placed by a
  * player) and mob farms (large same-type mob clusters, piles of dropped items).
  */
-public class SpawnerFinder extends ChunkFinderModule<SpawnerFinder.Spawners> {
+public class SpawnerFinder extends ChunkFinderModule<SpawnerFinder.Spawners> implements HuntTarget.Provider {
 	private final BoolSetting showNatural = add(new BoolSetting("Show Natural", "Also show dungeon / structure spawners", false));
 	private final BoolSetting farms = add(new BoolSetting("Mob Farms", "Detect big same-type mob clusters", true));
 	private final NumberSetting farmSize = add(new NumberSetting("Farm Size", "Same-type mobs in one chunk to flag a farm", 16, 6, 100, 1)).visibleWhen(farms::get);
@@ -164,4 +165,12 @@ public class SpawnerFinder extends ChunkFinderModule<SpawnerFinder.Spawners> {
 			Render3D.label(f.center().add(0, 2.6, 0), "FARM " + f.count() + " " + f.what() + " §7" + WorldUtil.distance(cam.distanceTo(f.center())), color, 1f);
 		}
 	}
+
+	@Override
+	public void collectTargets(List<HuntTarget> out) {
+		for (Spawners s : results.values())
+			for (Spawner sp : s.list()) if (!sp.natural()) out.add(new HuntTarget(sp.pos(), 60, "Player spawner (" + sp.mob() + ")", 0xFFFF55FF));
+		for (Farm f : farmResults.values()) out.add(new HuntTarget(BlockPos.containing(f.center()), 45, "Farm: " + f.count() + " " + f.what(), 0xFFFFB347));
+	}
+
 }

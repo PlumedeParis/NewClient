@@ -68,6 +68,14 @@ public class ZeroGameTest implements FabricClientGameTest {
 			server.runCommand("fill 333 -58 202 333 -56 202 amethyst_cluster[facing=north]");
 			server.runCommand("fill 333 -58 204 333 -56 204 amethyst_cluster[facing=south]");
 			server.runCommand("setblock 333 -55 203 small_amethyst_bud[facing=up]");
+			// A natural-looking geode (mixed bud stages, ~25% clusters): must NOT be highlighted
+			server.runCommand("fill 344 -60 200 350 -54 206 calcite");
+			server.runCommand("fill 345 -59 201 349 -55 205 air");
+			server.runCommand("fill 347 -58 203 347 -56 203 budding_amethyst");
+			server.runCommand("fill 346 -58 203 346 -56 203 small_amethyst_bud[facing=west]");
+			server.runCommand("fill 348 -58 203 348 -56 203 medium_amethyst_bud[facing=east]");
+			server.runCommand("fill 347 -58 202 347 -56 202 large_amethyst_bud[facing=north]");
+			server.runCommand("fill 347 -58 204 347 -56 204 amethyst_cluster[facing=south]");
 			// Pond with kelp grown past its natural age
 			server.runCommand("fill 330 -60 180 336 -52 186 glass");
 			server.runCommand("fill 331 -59 181 335 -52 185 water");
@@ -92,6 +100,7 @@ public class ZeroGameTest implements FabricClientGameTest {
 				ModuleManager.rotatedDeepslate.setEnabled(true);
 				ModuleManager.spawnerFinder.setEnabled(true);
 				ModuleManager.tunnelFinder.setEnabled(true);
+				ModuleManager.baseRadar.setEnabled(true);
 			});
 			ctx.waitTicks(100);
 			ctx.takeScreenshot("01_world_modules");
@@ -124,6 +133,12 @@ public class ZeroGameTest implements FabricClientGameTest {
 			});
 			ctx.waitTicks(10);
 			ctx.takeScreenshot("02d_hunt");
+			ctx.waitTicks(20);
+			ctx.takeScreenshot("02d2_base_radar");
+			ctx.computeOnClient(mc -> {
+				System.out.println("[ZERO-HUNT-TEST] radar=" + ModuleManager.baseRadar.getInfo() + " geodesFlagged=" + ModuleManager.amethystFinder.getInfo());
+				return null;
+			});
 			// Spawner ESP + custom crosshair
 			server.runCommand("setblock 316 -50 214 spawner{SpawnData:{entity:{id:\"minecraft:zombie\"}}}");
 			server.runCommand("setblock 326 -50 214 spawner{SpawnData:{entity:{id:\"minecraft:blaze\"}}}");
@@ -148,7 +163,7 @@ public class ZeroGameTest implements FabricClientGameTest {
 				return null;
 			});
 			ctx.computeOnClient(mc -> {
-				String r = "amethyst=" + ModuleManager.amethystFinder.getInfo() + " kelp=" + ModuleManager.growthFinder.getInfo()
+				String r = "geodesFlagged=" + ModuleManager.amethystFinder.getInfo() + " radar=" + ModuleManager.baseRadar.getInfo() + " amethyst=" + ModuleManager.amethystFinder.getInfo() + " kelp=" + ModuleManager.growthFinder.getInfo()
 					+ " deepslate=" + ModuleManager.rotatedDeepslate.getInfo() + " spawner=" + ModuleManager.spawnerFinder.getInfo()
 					+ " tunnels=" + ModuleManager.tunnelFinder.getInfo();
 				System.out.println("[ZERO-HUNT-TEST] " + r);
@@ -159,6 +174,23 @@ public class ZeroGameTest implements FabricClientGameTest {
 
 			ctx.setScreen(ClickGuiScreen::new);
 			ctx.waitTicks(20);
+			// Paste test: Ctrl+V into the search box
+			ctx.runOnClient(mc -> mc.keyboardHandler.setClipboard("Tunnel"));
+			ctx.waitTicks(2);
+			System.out.println("[ZERO-HUNT-TEST] clipboard=" + ctx.computeOnClient(mc -> mc.keyboardHandler.getClipboard()) + " focused=" + ctx.computeOnClient(mc -> dev.zero.gui.comp.TextField.focused));
+			ctx.getInput().holdControl();
+			ctx.getInput().pressKey(GLFW.GLFW_KEY_V);
+			ctx.getInput().releaseControl();
+			ctx.waitTicks(5);
+			String pasted = ctx.computeOnClient(mc -> ClickGuiScreen.searchQuery());
+			System.out.println("[ZERO-HUNT-TEST] pasted search=" + pasted);
+			ctx.takeScreenshot("03a_paste_search");
+			ctx.getInput().holdControl();
+			ctx.getInput().pressKey(GLFW.GLFW_KEY_A);
+			ctx.getInput().releaseControl();
+			ctx.getInput().pressKey(GLFW.GLFW_KEY_BACKSPACE);
+			ctx.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+			ctx.waitTicks(5);
 			double scale = ctx.computeOnClient(mc -> mc.getWindow().getGuiScale());
 			// Right click the first module (BlockESP) to expand its settings.
 			ctx.getInput().setCursorPos((16 + 40) * scale, (42 + 20 + 8) * scale);

@@ -1,6 +1,7 @@
 package dev.zero.modules;
 
 import dev.zero.module.Category;
+import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
@@ -27,7 +28,7 @@ import java.util.Set;
  * is a hard proof). Age 24-25 can only be reached by random-tick growth, which happens only
  * while a player keeps the chunk loaded. Many grown kelp tops = a player stayed close by.
  */
-public class GrowthFinder extends ChunkFinderModule<GrowthFinder.Growth> {
+public class GrowthFinder extends ChunkFinderModule<GrowthFinder.Growth> implements HuntTarget.Provider {
 	private final NumberSetting minGrown = add(new NumberSetting("Min Grown", "Grown kelp tops in a chunk to flag it", 4, 1, 40, 1)).onChange(this::rescan);
 	private final BoolSetting maxOnly = add(new BoolSetting("Max Age Only", "Only count fully grown (age 25) kelp", false)).onChange(this::rescan);
 	private final BoolSetting highlight = add(new BoolSetting("Highlight Kelp", "Box each grown kelp top", true));
@@ -93,4 +94,10 @@ public class GrowthFinder extends ChunkFinderModule<GrowthFinder.Growth> {
 			Render3D.label(new Vec3(cx + 8, g.maxY() + 2.5, cz + 8), "GROWN KELP " + g.grown() + " §7" + WorldUtil.distance(cam.distanceTo(Vec3.atCenterOf(g.center()))), color, 1f);
 		}
 	}
+
+	@Override
+	public void collectTargets(List<HuntTarget> out) {
+		for (Growth g : results.values()) out.add(new HuntTarget(g.center(), Math.min(60, 20 + g.grown() * 3), "Grown kelp x" + g.grown(), 0xFF4ADE80));
+	}
+
 }

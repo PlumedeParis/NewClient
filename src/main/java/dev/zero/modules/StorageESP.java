@@ -1,6 +1,7 @@
 package dev.zero.modules;
 
 import dev.zero.module.Category;
+import dev.zero.module.HuntTarget;
 import dev.zero.module.ScanningModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
@@ -44,7 +45,7 @@ import java.util.List;
  * merged double chests, dye-colored shulkers and per-chunk storage counts.
  * Reads block entities from chunk data the server already sent.
  */
-public class StorageESP extends ScanningModule {
+public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 	public enum Style { BOTH, OUTLINE, FILL }
 
 	private enum Type { CHEST, TRAPPED, ENDER, SHULKER, BARREL, HOPPER, FURNACE, DISPENSER, BREWING }
@@ -215,4 +216,13 @@ public class StorageESP extends ScanningModule {
 			}
 		}
 	}
+
+	@Override
+	public void collectTargets(List<HuntTarget> out) {
+		for (List<Entry> list : found.values()) {
+			if (list.size() < countThreshold.getInt()) continue;
+			out.add(new HuntTarget(BlockPos.containing(list.get(0).box.getCenter()), Math.min(90, 30 + list.size() * 4), list.size() + " storage blocks", 0xFFFFB347));
+		}
+	}
+
 }

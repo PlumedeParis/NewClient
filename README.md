@@ -51,15 +51,18 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 |---|---|
 | **BaseFinder** | Player-made blocks / stashes, natural structures filtered out. |
 | **SusChunk** | Hidden activity: dug tunnels, buried storage, lights, portals, farms, chunk age. |
-| **AmethystFinder** | Geodes generate with ~25% fully grown clusters. Buds only grow (and budding amethyst only sprouts new buds) while a player keeps the chunk loaded, so a mostly-grown geode means someone has been nearby for a long time. |
+| **AmethystFinder** | Buds are grouped into whole geodes (across chunk borders). Generation gives ~25% fully grown clusters; buds only grow while a player keeps the chunk loaded. Only geodes where almost everything is fully grown (default 80%+) are highlighted, with the odds of that happening naturally (e.g. "1 in 2M"). Natural geodes are ignored. |
 | **GrowthFinder** | Kelp tops generate at age 20–23; age 24–25 is only reachable by growing in a loaded chunk, which is hard proof of long loading. |
 | **RotatedDeepslate** | Natural deepslate is always upright (axis Y). Sideways deepslate (axis X/Z) was placed by a player, typically patching a tunnel or a base entrance. Also flags cobbled deepslate (outside ancient cities). |
 | **SpawnerFinder** | Spawners with a non-natural mob or no dungeon/mineshaft/fortress/stronghold/bastion around them were placed by a player. Shows the mob type. Also detects mob farms (big same-type mob clusters) and dropped-item piles. |
+| **BaseRadar** | For zones full of bases: merges the evidence of every Hunt module (and StorageESP) into one target per location, ranks them (smart = evidence weighted by distance), shows beams only on the top few, a ranked HUD list and a mini radar. Mark targets as checked with **K** (or automatically after standing near one for 3 s) so you work through the area one base at a time; checked targets are saved per server. Quiet Mode replaces the per-module alert spam with one alert per strong new target. |
 | **TunnelFinder** | Highlights 1x1 shafts dug straight down, 1-wide 2-high tunnels and 1-wide staircases. Natural caves are never that straight and regular. |
 
 ![Hunt modules: tunnel, shaft, staircase, rotated deepslate, grown kelp, geode, spawner/farm tracers](docs/hunt.png)
 
 > Krypton is closed-source, so ZERØ does not copy it; these modules implement the base-hunting techniques DonutSMP players use, all from data your client already receives.
+
+![BaseRadar: ranked targets, mini radar, beams on the top targets](docs/base_radar.png)
 
 ![X-Ray (exposed only)](docs/xray.png)
 
@@ -77,6 +80,7 @@ X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **S
 |---|---|---|
 | ![](docs/clickgui.png) | ![](docs/block_picker.png) | ![](docs/finds.png) |
 
+* **Text boxes** support **Ctrl+V** paste (Cmd+V on Mac), Ctrl+C copy, Ctrl+X cut, Ctrl+A select all, Ctrl+Backspace delete word. Ctrl+V in the GUI pastes into search.
 * **Right Shift** opens the GUI. Left click: toggle. Right click: settings. Middle click: bind. Start typing to search.
 * **★ Finds**: every base, stash and sus chunk saved on the current server. You can copy coords and delete entries.
 * **HUD**: watermark, module list, coords plus converted Nether/Overworld coords, nearby bases, player radar and toasts.

@@ -1,6 +1,7 @@
 package dev.zero.modules;
 
 import dev.zero.module.Category;
+import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
@@ -25,7 +26,7 @@ import java.util.List;
  * its side (axis X / Z) was placed by a player - typically to patch a tunnel or hide a base
  * entrance. Also optionally flags cobbled deepslate outside ancient cities.
  */
-public class RotatedDeepslate extends ChunkFinderModule<RotatedDeepslate.Found> {
+public class RotatedDeepslate extends ChunkFinderModule<RotatedDeepslate.Found> implements HuntTarget.Provider {
 	private final BoolSetting cobbled = add(new BoolSetting("Cobbled Deepslate", "Also flag cobbled deepslate (player-made)", true)).onChange(this::rescan);
 	private final NumberSetting alertCount = add(new NumberSetting("Alert Count", "Blocks in a chunk to send an alert", 3, 1, 50, 1));
 	private final BoolSetting tracers = add(new BoolSetting("Tracers", "Tracers to flagged chunks", false));
@@ -96,4 +97,13 @@ public class RotatedDeepslate extends ChunkFinderModule<RotatedDeepslate.Found> 
 				Render3D.label(Vec3.atCenterOf(first).add(0, 1.2, 0), "PLACED DEEPSLATE " + f.total() + " §7" + WorldUtil.distance(cam.distanceTo(Vec3.atCenterOf(first))), 0xFF60A5FA, 1f);
 		}
 	}
+
+	@Override
+	public void collectTargets(List<HuntTarget> out) {
+		for (Found f : results.values()) {
+			BlockPos first = !f.rotated().isEmpty() ? f.rotated().get(0) : f.cobbled().get(0);
+			out.add(new HuntTarget(first, Math.min(70, 25 + f.rotated().size() * 8 + f.cobbled().size() * 2), "Placed deepslate x" + f.total(), 0xFF60A5FA));
+		}
+	}
+
 }

@@ -242,12 +242,17 @@ public class ClickGuiScreen extends Screen {
 			KeybindComp.listening = null;
 			return true;
 		}
+		if (TextField.focused == null && key == GLFW.GLFW_KEY_V && ((event.modifiers() & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0 || TextField.ctrlDown())) {
+			TextField.focused = search;
+			search.insert(minecraft.keyboardHandler.getClipboard());
+			return true;
+		}
 		if (TextField.focused != null) {
 			if (key == GLFW.GLFW_KEY_ESCAPE) {
 				TextField.focused = null;
 				return true;
 			}
-			if (TextField.focused.keyPressed(key)) return true;
+			if (TextField.focused.keyPressed(key, event.modifiers())) return true;
 		}
 		if (key == ClientSettings.GUI_KEY.get() && TextField.focused == null) {
 			onClose();
