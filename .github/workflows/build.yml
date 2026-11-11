@@ -3,7 +3,7 @@ name: Build ZERØ
 on:
   push:
     branches: ['**']
-    paths-ignore: ['**.md', 'docs/**']
+    paths-ignore: ['**.md', 'docs/**', 'src/gametest/**']
   workflow_dispatch:
 
 permissions:
