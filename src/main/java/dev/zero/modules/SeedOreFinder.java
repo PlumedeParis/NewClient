@@ -272,7 +272,7 @@ public class SeedOreFinder extends Module {
 			}
 		}
 		int w = Math.max(Render2D.width(line1), Render2D.width(line2)) + 14, h = 26;
-		int[] pos = Hud.slot(w, h);
+		int[] pos = Hud.slot("Seed ores", w, h);
 		Render2D.roundedRect(g, pos[0], pos[1], w, h, 5, 0xC8101016);
 		Render2D.rect(g, pos[0], pos[1] + 4, 2, h - 8, BlockColors.get(Blocks.DIAMOND_ORE));
 		Render2D.text(g, line1, pos[0] + 7, pos[1] + 4, 0xFFFFFFFF, false);

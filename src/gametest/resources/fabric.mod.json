@@ -5,6 +5,6 @@
 	"name": "ZERØ Tests",
 	"environment": "client",
 	"entrypoints": {
-		"fabric-client-gametest": ["dev.zero.test.SeedAccuracyTest", "dev.zero.test.ZeroGameTest", "dev.zero.test.GuiOpenTest"]
+		"fabric-client-gametest": ["dev.zero.test.SeedAccuracyTest", "dev.zero.test.ZeroGameTest", "dev.zero.test.GuiOpenTest", "dev.zero.test.ProfileHudTest"]
 	}
 }

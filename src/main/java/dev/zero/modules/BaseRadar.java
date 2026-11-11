@@ -301,7 +301,7 @@ public class BaseRadar extends Module {
 		int rows = Math.min(6, list.size());
 		int w = 196, rowH = 11, radar = 64;
 		int h = 18 + Math.max(rows * rowH, 10) + radar + 8;
-		int[] pos = Hud.slot(w, h);
+		int[] pos = Hud.slot("Base Radar", w, h);
 		int x = pos[0], y = pos[1];
 		int accent = ClientSettings.accent();
 		Render2D.glow(g, x, y, w, h, 5, ColorUtil.withAlpha(0xFFFF4D6D, 50), 4);

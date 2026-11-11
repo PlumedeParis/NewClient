@@ -53,6 +53,8 @@ public final class ZeroClient implements ClientModInitializer {
 		ClientWorldEvents.AFTER_CLIENT_WORLD_CHANGE.register((client, world) -> {
 			ChunkScanner.onWorldChange();
 			lastLevel = world;
+			// Auto-load the profile chosen for this server, once the join has finished (next tick).
+			if (world != null) profileCheckTicks = 20;
 		});
 		WorldRenderEvents.END_MAIN.register(context -> render3D((MultiBufferSource.BufferSource) context.consumers()));
 		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), (g, d) -> {
@@ -67,10 +69,20 @@ public final class ZeroClient implements ClientModInitializer {
 		});
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
 
+
 		LOGGER.info("ZERØ loaded with {} modules (client-side only)", ModuleManager.all().size());
 	}
 
+	private static int profileCheckTicks;
+
 	private static void tick(Minecraft mc) {
+		if (profileCheckTicks > 0 && --profileCheckTicks == 0 && mc.level != null) {
+			String wanted = ConfigManager.profileForServer(dev.zero.util.WorldUtil.serverId());
+			if (wanted != null && !wanted.equals(ConfigManager.activeProfile()) && ConfigManager.exists(wanted)) {
+				ConfigManager.switchTo(wanted);
+				dev.zero.hud.Notifications.push("Profile loaded", wanted + " (auto for this server)", dev.zero.hud.Notifications.Type.INFO, 3500);
+			}
+		}
 		if (mc.level == null && lastLevel != null) {
 			ChunkScanner.onWorldChange();
 			lastLevel = null;

@@ -31,12 +31,32 @@ public final class Hud {
 	private Hud() {}
 
 	/** Allocates a slot in the info column (opposite side of the module list). Returns {x, y}. */
-	public static int[] slot(int w, int h) {
-		boolean right = ClientSettings.ARRAY_SIDE.get() == ClientSettings.ArrayListSide.LEFT;
-		int x = right ? screenW - 6 - w : 6;
-		int y = stackY;
-		stackY += h + 5;
-		return new int[] {x, y};
+	public static int[] slot(String id, int w, int h) {
+		int[] pos;
+		if (HudLayout.isCustom(id)) {
+			pos = HudLayout.place(id, w, h, screenW, screenH);
+		} else {
+			boolean right = ClientSettings.ARRAY_SIDE.get() == ClientSettings.ArrayListSide.LEFT;
+			pos = new int[] {right ? screenW - 6 - w : 6, stackY};
+			stackY += h + 5;
+		}
+		HudLayout.record(id, pos[0], pos[1], w, h);
+		return pos;
+	}
+
+	private static int screenH;
+
+	/** Where toasts go: {right edge x, base y, 1 = stack upwards / 0 = downwards}. */
+	public static int[] notificationAnchor(int sw, int sh) {
+		int w = 190, h = 70;
+		if (HudLayout.isCustom("notifications")) {
+			int[] p = HudLayout.place("notifications", w, h, sw, sh);
+			HudLayout.record("notifications", p[0], p[1], w, h);
+			boolean up = HudLayout.get("notifications")[1] >= 0.5;
+			return new int[] {p[0] + w, up ? p[1] + h : p[1], up ? 1 : 0};
+		}
+		HudLayout.record("notifications", sw - 8 - w, sh - 26 - h, w, h);
+		return new int[] {sw - 8, sh - 26, 1};
 	}
 
 	public static void render(GuiGraphics g, DeltaTracker delta) {
@@ -44,7 +64,9 @@ public final class Hud {
 		if (mc.options.hideGui || mc.player == null) return;
 		float pt = delta.getGameTimeDeltaPartialTick(false);
 		screenW = g.guiWidth();
+		screenH = g.guiHeight();
 		stackY = 6;
+		HudLayout.LAST.clear();
 
 		if (ClientSettings.WATERMARK.get()) watermark(g, mc);
 		if (ClientSettings.ARRAY_LIST.get()) arrayList(g);
@@ -53,7 +75,7 @@ public final class Hud {
 			String perf = String.format(Locale.ROOT, "ZER\u00D8  3D %.1fms  HUD %.1fms  scan %.1fms", dev.zero.util.Perf.renderMs(),
 				dev.zero.util.Perf.MODULE_MS.getOrDefault("_hud", 0.0), dev.zero.util.Perf.scanMs());
 			int w = Render2D.width(perf) + 10;
-			int[] p = slot(w, 13);
+			int[] p = slot("perf", w, 13);
 			Render2D.roundedRect(g, p[0], p[1], w, 13, 4, 0xC8101016);
 			Render2D.text(g, perf, p[0] + 5, p[1] + 3, 0xFFB4B4C8, false);
 		}
@@ -76,7 +98,7 @@ public final class Hud {
 		String info = " " + VERSION + "  │  " + fps + "  │  " + server;
 		int h = 17;
 		int w = Render2D.width(NAME) + Render2D.width(info) + 16;
-		int[] pos = slot(w, h);
+		int[] pos = slot("watermark", w, h);
 		int x = pos[0], y = pos[1];
 		Render2D.glow(g, x, y, w, h, 5, ColorUtil.withAlpha(ClientSettings.accent(), 70), 6);
 		Render2D.roundedRect(g, x, y, w, h, 5, 0xE6101016);
@@ -88,19 +110,41 @@ public final class Hud {
 	private static void arrayList(GuiGraphics g) {
 		List<Module> mods = new ArrayList<>(ModuleManager.all());
 		mods.sort((a, b) -> Integer.compare(width(b), width(a)));
-		boolean right = ClientSettings.ARRAY_SIDE.get() == ClientSettings.ArrayListSide.RIGHT;
 		int sw = g.guiWidth();
-		int y = 6;
 		int lineH = 13;
-		int index = 0;
+		// Size of the whole list (for custom placement and the HUD editor).
+		int boxW = 40, boxH = 0;
 		for (Module m : mods) {
 			Anim anim = ARRAY_ANIMS.computeIfAbsent(m, k -> new Anim(0, 12));
 			anim.setTarget(m.isEnabled() ? 1 : 0);
+			if (m.isEnabled()) {
+				boxW = Math.max(boxW, width(m) + 10);
+				boxH += lineH;
+			}
+		}
+		boxH = Math.max(boxH, lineH);
+		boolean right;
+		int x0, y;
+		if (HudLayout.isCustom("modules")) {
+			int[] p = HudLayout.place("modules", boxW, boxH, sw, screenH);
+			right = HudLayout.get("modules")[0] >= 0.5;
+			x0 = right ? p[0] + boxW : p[0];
+			y = p[1];
+			HudLayout.record("modules", p[0], p[1], boxW, boxH);
+		} else {
+			right = ClientSettings.ARRAY_SIDE.get() == ClientSettings.ArrayListSide.RIGHT;
+			x0 = right ? sw - 6 : 6;
+			y = 6;
+			HudLayout.record("modules", right ? sw - 6 - boxW : 6, 6, boxW, boxH);
+		}
+		int index = 0;
+		for (Module m : mods) {
+			Anim anim = ARRAY_ANIMS.get(m);
 			float a = anim.getF();
 			if (a < 0.01f) continue;
 			int w = width(m) + 10;
 			float ease = (float) Anim.easeOutCubic(a);
-			int x = right ? (int) (sw - 6 - w * ease) : (int) (6 - w + w * ease);
+			int x = right ? (int) (x0 - w * ease) : (int) (x0 - w + w * ease);
 			int color = ClientSettings.accentAt(index * 0.08f);
 			int bg = ColorUtil.fade(0xD0101016, a);
 			Render2D.rect(g, x, y, w, (int) (lineH * a) + 1, bg);
@@ -141,7 +185,7 @@ public final class Hud {
 		for (String l : lines) w = Math.max(w, Render2D.width(l));
 		w += 14;
 		int h = lines.size() * 10 + 6;
-		int[] pos = slot(w, h);
+		int[] pos = slot("coords", w, h);
 		Render2D.roundedRect(g, pos[0], pos[1], w, h, 5, 0xC8101016);
 		Render2D.rect(g, pos[0], pos[1] + 4, 2, h - 8, ClientSettings.accent());
 		int accent = ClientSettings.accent();

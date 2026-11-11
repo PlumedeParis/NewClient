@@ -67,11 +67,13 @@ public final class Notifications {
 	}
 
 	public static synchronized void render(GuiGraphics g) {
-		if (TOASTS.isEmpty()) return;
 		int sw = g.guiWidth(), sh = g.guiHeight();
+		int[] anchor = Hud.notificationAnchor(sw, sh); // also records the area for the HUD editor
+		if (TOASTS.isEmpty()) return;
 		long now = System.currentTimeMillis();
 		int h = 30, gap = 5;
-		int baseY = sh - 26; // stay above the hotbar
+		int rightX = anchor[0], baseY = anchor[1];
+		boolean up = anchor[2] == 1;
 		int index = 0;
 		for (Iterator<Toast> it = TOASTS.iterator(); it.hasNext(); ) {
 			Toast t = it.next();
@@ -91,12 +93,12 @@ public final class Notifications {
 		for (int i = TOASTS.size() - 1; i >= 0; i--) {
 			Toast t = TOASTS.get(i);
 			float s = t.slide.getF();
-			int targetY = baseY - (slot + 1) * (h + gap);
+			int targetY = up ? baseY - (slot + 1) * (h + gap) : baseY + slot * (h + gap);
 			if (t.y.getTarget() < 0) t.y.snap(targetY);
 			t.y.setTarget(targetY);
 			slot++;
 			int w = Math.max(130, Math.max(Render2D.width(t.title), Render2D.width(t.message)) + 42);
-			int x = (int) (sw - 8 - w * Anim.easeOutCubic(s));
+			int x = (int) (rightX - w * Anim.easeOutCubic(s));
 			int y = (int) t.y.get();
 			float alpha = Math.min(1f, s * 1.5f);
 

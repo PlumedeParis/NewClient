@@ -76,11 +76,17 @@ X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **S
 
 ## Interface
 
+| Profiles | HUD editor | Title screen |
+|---|---|---|
+| ![](docs/profiles.png) | ![](docs/hud_editor.png) | ![](docs/title_screen.png) |
+
 | ClickGUI | Block picker | Saved finds |
 |---|---|---|
 | ![](docs/clickgui.png) | ![](docs/block_picker.png) | ![](docs/finds.png) |
 
 * **Text boxes** support **Ctrl+V** paste (Cmd+V on Mac), Ctrl+C copy, Ctrl+X cut, Ctrl+A select all, Ctrl+Backspace delete word. Ctrl+V in the GUI pastes into search.
+* **Profiles** (top bar): separate setups (modules, settings, keybinds, crosshair, HUD layout). Create blank / duplicate / rename / delete, and tick "Auto-load on this server" so each server loads its own profile when you join. Stored in `config/zero/profiles/`.
+* **HUD editor** (top bar): drag every HUD panel (watermark, coords, module list, toasts, radars...) anywhere, with snapping to edges, centre and other panels. Right click = back to automatic position. Saved per profile.
 * **Right Shift** opens the GUI. Left click: toggle. Right click: settings. Middle click: bind. Start typing to search.
 * **★ Finds**: every base, stash and sus chunk saved on the current server. You can copy coords and delete entries.
 * **HUD**: watermark, module list, coords plus converted Nether/Overworld coords, nearby bases, player radar and toasts.

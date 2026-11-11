@@ -116,7 +116,46 @@ public final class Render2D {
 	}
 
 	public static void text(GuiGraphics g, String s, int x, int y, int color, boolean shadow) {
-		g.drawString(font(), s, x, y, color, shadow);
+		if (s.indexOf('\u00D8') < 0) {
+			g.drawString(font(), s, x, y, color, shadow);
+			return;
+		}
+		// Minecraft's font draws \u00D8 almost like a zero: draw "O" with a real diagonal slash.
+		int cx = x;
+		int start = 0;
+		for (int i = 0; i <= s.length(); i++) {
+			if (i == s.length() || s.charAt(i) == '\u00D8') {
+				String part = s.substring(start, i);
+				if (!part.isEmpty()) {
+					g.drawString(font(), part, cx, y, color, shadow);
+					cx += font().width(part);
+				}
+				if (i < s.length()) {
+					slashedO(g, cx, y, color, shadow);
+					cx += font().width("O");
+				}
+				start = i + 1;
+			}
+		}
+	}
+
+	/** Draws an "O" crossed by a diagonal slash (the \u00D8 of ZER\u00D8). */
+	public static void slashedO(GuiGraphics g, int x, int y, int color, boolean shadow) {
+		if (shadow) {
+			int sc = ColorUtil.argb(ColorUtil.a(color), ColorUtil.r(color) / 4, ColorUtil.g(color) / 4, ColorUtil.b(color) / 4);
+			g.drawString(font(), "O", x + 1, y + 1, sc, false);
+			slash(g, x + 1, y + 1, sc);
+		}
+		g.drawString(font(), "O", x, y, color, false);
+		slash(g, x, y, color);
+	}
+
+	private static void slash(GuiGraphics g, int x, int y, int color) {
+		// from just below the bottom-left to just above the top-right of the 5x7 glyph
+		for (int r = 0; r <= 8; r++) {
+			int px = x + Math.round(r * 4 / 8f), py = y + 7 - r;
+			g.fill(px, py, px + 1, py + 1, color);
+		}
 	}
 
 	public static void text(GuiGraphics g, String s, int x, int y, int color) {
@@ -131,13 +170,19 @@ public final class Render2D {
 	public static void gradientText(GuiGraphics g, String s, int x, int y, java.util.function.IntUnaryOperator colorAtIndex, boolean shadow) {
 		int cx = x;
 		for (int i = 0; i < s.length(); i++) {
-			String ch = String.valueOf(s.charAt(i));
+			char c = s.charAt(i);
+			if (c == '\u00D8') {
+				slashedO(g, cx, y, colorAtIndex.applyAsInt(i), shadow);
+				cx += font().width("O");
+				continue;
+			}
+			String ch = String.valueOf(c);
 			g.drawString(font(), ch, cx, y, colorAtIndex.applyAsInt(i), shadow);
 			cx += font().width(ch);
 		}
 	}
 
-	public static int width(String s) { return font().width(s); }
+	public static int width(String s) { return font().width(s.replace('\u00D8', 'O')); }
 
 	/** Cuts a string with an ellipsis so it fits in {@code max} pixels. */
 	public static String trim(String s, int max) {

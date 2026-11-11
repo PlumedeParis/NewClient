@@ -13,7 +13,8 @@
 		"LightMixin",
 		"MinecraftMixin",
 		"RenderTypeAccessor",
-		"SectionCompilerMixin"
+		"SectionCompilerMixin",
+		"TitleScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

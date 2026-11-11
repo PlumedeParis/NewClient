@@ -249,7 +249,7 @@ public class PlayerDetector extends Module {
 		int rows = Math.min(8, list.size());
 		int rowH = 18, w = 170;
 		int h = 16 + rows * rowH;
-		int[] pos = dev.zero.hud.Hud.slot(w, h);
+		int[] pos = dev.zero.hud.Hud.slot("Player radar", w, h);
 		int x = pos[0], y = pos[1];
 		int accent = color.get();
 		Render2D.glow(g, x, y, w, h, 5, ColorUtil.withAlpha(accent, 60), 4);

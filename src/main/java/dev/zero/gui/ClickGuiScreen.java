@@ -89,6 +89,8 @@ public class ClickGuiScreen extends Screen {
 	}
 
 	// ---- Layout persistence --------------------------------------------------------------
+	public static void clearLayout() { LAYOUT.clear(); }
+
 	public static void loadLayout(JsonObject o) {
 		for (String key : o.keySet()) {
 			JsonObject p = o.getAsJsonObject(key);
@@ -149,14 +151,22 @@ public class ClickGuiScreen extends Screen {
 	}
 
 	private int[] topBar() {
-		int w = 320, h = 22;
+		int w = Math.min(width - 16, 430), h = 22;
 		return new int[] {width / 2 - w / 2, 10, w, h};
 	}
 
-	private int[] findsButton() {
+	private static final String[] TOP_BUTTONS = {"\u2605 Finds", "\u2630 Profiles", "\u25A3 HUD"};
+	private static final int[] TOP_WIDTHS = {52, 62, 44};
+
+	/** Buttons on the right of the top bar, right to left: Finds, Profiles, HUD. */
+	private int[] topButton(int i) {
 		int[] t = topBar();
-		return new int[] {t[0] + t[2] - 58, t[1] + 4, 52, 14};
+		int x = t[0] + t[2] - 6;
+		for (int k = 0; k <= i; k++) x -= TOP_WIDTHS[k] + (k > 0 ? 4 : 0);
+		return new int[] {x, t[1] + 4, TOP_WIDTHS[i], 14};
 	}
+
+	private int[] findsButton() { return topButton(0); }
 
 	private void renderTopBar(GuiGraphics g, int mx, int my, float open) {
 		int[] t = topBar();
@@ -166,11 +176,14 @@ public class ClickGuiScreen extends Screen {
 		Render2D.gradientH(g, x + 8, y, w - 16, 1, ClientSettings.accent(), ClientSettings.accent2());
 		Render2D.gradientText(g, Hud.NAME, x + 9, y + 7, i -> ClientSettings.accentAt(i / 9f), true);
 		int sx = x + 14 + Render2D.width(Hud.NAME);
-		search.render(g, sx, y + 4, w - (sx - x) - 66, 14, Theme.FIELD);
-		int[] b = findsButton();
-		boolean hover = Render2D.hovered(mx, my, b[0], b[1], b[2], b[3]);
-		Render2D.roundedRect(g, b[0], y + 4, b[2], b[3], 4, hover ? ClientSettings.accent() : ColorUtil.withAlpha(ClientSettings.accent(), 70));
-		Render2D.centeredText(g, "★ Finds", b[0] + b[2] / 2, y + 7, 0xFFFFFFFF, false);
+		int lastButton = topButton(TOP_BUTTONS.length - 1)[0];
+		search.render(g, sx, y + 4, lastButton - 6 - sx, 14, Theme.FIELD);
+		for (int i = 0; i < TOP_BUTTONS.length; i++) {
+			int[] b = topButton(i);
+			boolean hover = Render2D.hovered(mx, my, b[0], b[1], b[2], b[3]);
+			Render2D.roundedRect(g, b[0], y + 4, b[2], b[3], 4, hover ? ClientSettings.accent() : ColorUtil.withAlpha(ClientSettings.accent(), 70));
+			Render2D.centeredText(g, TOP_BUTTONS[i], b[0] + b[2] / 2, y + 7, 0xFFFFFFFF, false);
+		}
 	}
 
 	private void renderTooltip(GuiGraphics g, int mx, int my, int sc) {
@@ -179,6 +192,10 @@ public class ClickGuiScreen extends Screen {
 		if (tip == null) {
 			if (Render2D.hovered(mx, my, findsButton()[0], findsButton()[1], findsButton()[2], findsButton()[3]))
 				tip = "Saved finds  §7Bases, stashes and sus chunks found on this server";
+			else if (Render2D.hovered(mx, my, topButton(1)[0], topButton(1)[1], topButton(1)[2], topButton(1)[3]))
+				tip = "Profiles  §7Active: " + dev.zero.config.ConfigManager.activeProfile() + " • separate setups per server";
+			else if (Render2D.hovered(mx, my, topButton(2)[0], topButton(2)[1], topButton(2)[2], topButton(2)[3]))
+				tip = "HUD editor  §7Drag the HUD panels anywhere";
 			else tip = "§7Left: toggle  •  Right: settings  •  Middle: bind  •  Drag headers  •  Scroll";
 		}
 		tip = Render2D.trim(tip, width - 30);
@@ -197,6 +214,15 @@ public class ClickGuiScreen extends Screen {
 		int[] b = findsButton();
 		if (Render2D.hovered(mx, my, b[0], b[1], b[2], b[3])) {
 			minecraft.setScreen(new FindsScreen(this));
+			return true;
+		}
+		int[] pb = topButton(1), hb = topButton(2);
+		if (Render2D.hovered(mx, my, pb[0], pb[1], pb[2], pb[3])) {
+			minecraft.setScreen(new ProfilesScreen(this));
+			return true;
+		}
+		if (Render2D.hovered(mx, my, hb[0], hb[1], hb[2], hb[3])) {
+			minecraft.setScreen(new HudEditorScreen(null));
 			return true;
 		}
 		if (Render2D.hovered(mx, my, t[0], t[1], t[2], t[3])) {

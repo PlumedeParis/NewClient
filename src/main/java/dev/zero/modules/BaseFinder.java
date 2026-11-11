@@ -456,7 +456,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		int rows = Math.min(5, list.size());
 		int w = 168, rowH = 11;
 		int h = 16 + rows * rowH;
-		int[] pos = dev.zero.hud.Hud.slot(w, h);
+		int[] pos = dev.zero.hud.Hud.slot("Bases nearby", w, h);
 		int x = pos[0], y = pos[1];
 		Render2D.glow(g, x, y, w, h, 5, ColorUtil.withAlpha(Kind.BASE.color, 50), 4);
 		Render2D.roundedRect(g, x, y, w, h, 5, 0xE0101016);
