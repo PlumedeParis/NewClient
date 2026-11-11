@@ -38,6 +38,14 @@ public class SeedAccuracyTest implements FabricClientGameTest {
 			sp.getServer().runCommand("gamemode spectator @a");
 			check(ctx, sp, Level.OVERWORLD, Set.of(Blocks.DIAMOND_ORE, Blocks.DEEPSLATE_DIAMOND_ORE), "Diamonds", "tp @a 0 40 0");
 			mineCheck(ctx, sp);
+			// Holograms (look down through the terrain) + predictions beyond the loaded chunks
+			sp.getServer().runCommand("tp @a 0 40 0 30 70");
+			ctx.waitTicks(40);
+			ctx.takeScreenshot("seed_holograms");
+			int drawnUnloaded = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.drawnInUnloadedChunks());
+			int drawnTotal = ctx.computeOnClient(mc -> ModuleManager.seedOreFinder.visibleCount());
+			System.out.println("[ZERO-SEED-TEST] holograms drawn: " + drawnTotal + ", of which in chunks the game has NOT loaded: " + drawnUnloaded
+				+ (drawnUnloaded > 0 ? " OK" : " FAIL"));
 			check(ctx, sp, Level.OVERWORLD, Set.of(Blocks.IRON_ORE, Blocks.DEEPSLATE_IRON_ORE), "Iron", null);
 			check(ctx, sp, Level.OVERWORLD, Set.of(Blocks.REDSTONE_ORE, Blocks.DEEPSLATE_REDSTONE_ORE), "Redstone", null);
 			check(ctx, sp, Level.NETHER, Set.of(Blocks.ANCIENT_DEBRIS), "Ancient debris", "execute in minecraft:the_nether run tp @a 0 40 0");

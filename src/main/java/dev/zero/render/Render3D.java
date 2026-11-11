@@ -9,6 +9,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -50,6 +52,7 @@ public final class Render3D {
 	private static final Buf[] QUADS = {new Buf(), new Buf()};   // 12 floats + 1 color per quad
 	private static final Buf[] LINES = {new Buf(), new Buf()};   // 7 floats (xyz xyz width) + 1 color per line
 	private static final List<Label> LABELS = new ArrayList<>();
+	private static final Buf HOLO = new Buf(); // per quad: 4 x (x y z u v) + 1 color
 	private static Vec3 cam = Vec3.ZERO;
 	private static float lineScale = 1f;
 	private static float fx, fy, fz, cosCull, tanHalf;
@@ -141,6 +144,37 @@ public final class Render3D {
 			LINES[i].reset();
 		}
 		LABELS.clear();
+		HOLO.reset();
+	}
+
+	/**
+	 * A see-through "hologram" of a block: its real texture drawn as a glowing, translucent cube
+	 * visible through walls (used to show where predicted ores should be).
+	 */
+	public static void hologram(AABB box, net.minecraft.client.renderer.texture.TextureAtlasSprite sprite, int argb) {
+		float x1 = (float) (box.minX - cam.x), y1 = (float) (box.minY - cam.y), z1 = (float) (box.minZ - cam.z);
+		float x2 = (float) (box.maxX - cam.x), y2 = (float) (box.maxY - cam.y), z2 = (float) (box.maxZ - cam.z);
+		double hx = (x2 - x1) / 2.0, hy = (y2 - y1) / 2.0, hz = (z2 - z1) / 2.0;
+		if (!visible(x1 + hx, y1 + hy, z1 + hz, Math.sqrt(hx * hx + hy * hy + hz * hz))) return;
+		float u0 = sprite.getU0(), u1 = sprite.getU1(), v0 = sprite.getV0(), v1 = sprite.getV1();
+		boolean inside = x1 <= 0 && x2 >= 0 && y1 <= 0 && y2 >= 0 && z1 <= 0 && z2 >= 0;
+		if (inside || y1 > 0) holoQuad(argb, u0, u1, v0, v1, x1, y1, z1, x2, y1, z1, x2, y1, z2, x1, y1, z2);
+		if (inside || y2 < 0) holoQuad(argb, u0, u1, v0, v1, x1, y2, z2, x2, y2, z2, x2, y2, z1, x1, y2, z1);
+		if (inside || z1 > 0) holoQuad(argb, u0, u1, v0, v1, x2, y2, z1, x2, y1, z1, x1, y1, z1, x1, y2, z1);
+		if (inside || z2 < 0) holoQuad(argb, u0, u1, v0, v1, x1, y2, z2, x1, y1, z2, x2, y1, z2, x2, y2, z2);
+		if (inside || x1 > 0) holoQuad(argb, u0, u1, v0, v1, x1, y2, z1, x1, y1, z1, x1, y1, z2, x1, y2, z2);
+		if (inside || x2 < 0) holoQuad(argb, u0, u1, v0, v1, x2, y2, z2, x2, y1, z2, x2, y1, z1, x2, y2, z1);
+	}
+
+	/** Corners in order top-left, bottom-left, bottom-right, top-right of the texture. */
+	private static void holoQuad(int argb, float u0, float u1, float v0, float v1,
+								 float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz, float dx, float dy, float dz) {
+		Buf b = HOLO;
+		b.add(ax); b.add(ay); b.add(az); b.add(u0); b.add(v0);
+		b.add(bx); b.add(by); b.add(bz); b.add(u0); b.add(v1);
+		b.add(cx); b.add(cy); b.add(cz); b.add(u1); b.add(v1);
+		b.add(dx); b.add(dy); b.add(dz); b.add(u1); b.add(v0);
+		b.color(argb);
 	}
 
 	/**
@@ -198,6 +232,18 @@ public final class Render3D {
 				}
 				buffers.endBatch(type);
 			}
+		}
+
+		if (HOLO.cn > 0) {
+			RenderType type = RenderTypes.textSeeThrough(TextureAtlas.LOCATION_BLOCKS);
+			VertexConsumer vc = buffers.getBuffer(type);
+			float[] v = HOLO.v;
+			for (int i = 0, k = 0; i < HOLO.cn; i++) {
+				int col = HOLO.c[i];
+				for (int j = 0; j < 4; j++, k += 5)
+					vc.addVertex(pose, v[k], v[k + 1], v[k + 2]).setColor(col).setUv(v[k + 3], v[k + 4]).setLight(0xF000F0);
+			}
+			buffers.endBatch(type);
 		}
 
 		if (!LABELS.isEmpty()) {

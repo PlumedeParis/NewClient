@@ -44,6 +44,18 @@ public class SeedOreFinder extends Module {
 	private final TextSetting seed = add(new TextSetting("Seed", "World seed (number or text). Must be the server's real seed", "", "Type the world seed...", 40));
 	public enum OreType { BOTH, NORMAL_ONLY, DEEPSLATE_ONLY }
 
+	public enum Style { HOLOGRAM, BOX, BOTH }
+
+	private final EnumSetting<Style> style = add(new EnumSetting<>("Style", "Hologram = see-through copy of the ore block where it should be", Style.HOLOGRAM));
+	private final NumberSetting holoOpacity = add(new NumberSetting("Hologram Opacity", "How solid the ore holograms look", 0.65, 0.2, 1.0, 0.05)).visibleWhen(() -> style.get() != Style.BOX);
+
+	private final java.util.Map<Block, net.minecraft.client.renderer.texture.TextureAtlasSprite> sprites = new java.util.IdentityHashMap<>();
+
+	/** The ore's real texture, used for the hologram. */
+	private net.minecraft.client.renderer.texture.TextureAtlasSprite sprite(Block b) {
+		return sprites.computeIfAbsent(b, k -> mc.getBlockRenderer().getBlockModel(k.defaultBlockState()).particleIcon());
+	}
+
 	private final EnumSetting<OreType> oreType = add(new EnumSetting<>("Ore Type", "Normal ores (stone), deepslate ores, or both. Nether ores are not affected", OreType.BOTH));
 	private final BoolSetting diamonds = add(new BoolSetting("Diamonds", "Diamond ore", true));
 	private final BoolSetting debris = add(new BoolSetting("Ancient Debris", "Netherite (Nether)", true));
@@ -55,8 +67,8 @@ public class SeedOreFinder extends Module {
 	private final BoolSetting copper = add(new BoolSetting("Copper", "Copper ore", false));
 	private final BoolSetting coal = add(new BoolSetting("Coal", "Coal ore", false));
 	private final BoolSetting quartz = add(new BoolSetting("Quartz", "Nether quartz ore", false));
-	private final NumberSetting radius = add(new NumberSetting("Radius", "Prediction radius in chunks", 5, 1, 12, 1, " ch"));
-	private final BoolSetting unloaded = add(new BoolSetting("Unloaded Chunks", "Estimate ores in chunks you haven't loaded (less precise)", true));
+	private final NumberSetting radius = add(new NumberSetting("Radius", "Prediction radius in chunks (does not need loaded chunks)", 6, 1, 16, 1, " ch"));
+	private final BoolSetting unloaded = add(new BoolSetting("Unloaded Chunks", "Also predict ores in chunks you haven't loaded / can't see", true));
 	private final BoolSetting hideMined = add(new BoolSetting("Hide Mined", "Hide predictions that are visibly mined out", true));
 	private final BoolSetting tracers = add(new BoolSetting("Tracers", "Tracers to the nearest predicted ores", false));
 	private final BoolSetting labels = add(new BoolSetting("Labels", "Name + distance on the nearest ores", true));
@@ -150,12 +162,12 @@ public class SeedOreFinder extends Module {
 
 		ChunkPos center = mc.player.chunkPosition();
 		int r = radius.getInt();
-		if (tick % 2 == 0 && predictor.pendingCount() < 4) {
+		if (predictor.pendingCount() < 6) {
 			int submitted = 0;
 			// Nearest chunks first.
-			for (int ring = 0; ring <= r && submitted < 2; ring++) {
-				for (int dx = -ring; dx <= ring && submitted < 2; dx++) {
-					for (int dz = -ring; dz <= ring && submitted < 2; dz++) {
+			for (int ring = 0; ring <= r && submitted < 3; ring++) {
+				for (int dx = -ring; dx <= ring && submitted < 3; dx++) {
+					for (int dz = -ring; dz <= ring && submitted < 3; dz++) {
 						if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
 						int cx = center.x + dx, cz = center.z + dz;
 						long key = ChunkPos.asLong(cx, cz);
@@ -185,6 +197,7 @@ public class SeedOreFinder extends Module {
 				Integer prev = verified.get(p.pos());
 				if ((prev != null && prev != 1) || !mc.level.isLoaded(p.pos())) continue;
 				BlockState actual = mc.level.getBlockState(p.pos());
+				if (actual.is(Blocks.VOID_AIR)) continue; // not really loaded: nothing to judge
 				if (actual.isAir() || !actual.getFluidState().isEmpty()) {
 					verified.put(p.pos(), 3);
 				} else if (prev == null && XRay.isExposed(p.pos(), mc.level)) {
@@ -212,8 +225,7 @@ public class SeedOreFinder extends Module {
 			for (SeedWorld.Prediction p : res.predictions()) {
 				if (!wanted.contains(p.block())) continue;
 				Integer v = verified.get(p.pos());
-				if (v != null && v == 3 && hideMined.get()) continue;
-				if (v != null && v == 2) continue; // visibly something else
+				if (v != null && v == 3 && hideMined.get()) continue; // you can see it was mined
 				double d = Math.sqrt(p.pos().distToCenterSqr(cam));
 				if (d > max) continue;
 				list.add(new Visible(p, d, res.realTerrain()));
@@ -232,10 +244,11 @@ public class SeedOreFinder extends Module {
 		boolean hide = hideMined.get();
 		for (Visible v : sortedCache) {
 			if (list.size() >= 2500) break;
-			if (hide) {
-				// Mined just now? Hide the box instantly (air / fluid where the ore was).
+			if (hide && mc.level.isLoaded(v.p.pos())) {
+				// Mined just now? Hide it instantly - but only where the chunk is really loaded:
+				// unloaded / unseen positions read as air and must keep showing.
 				BlockState now = mc.level.getBlockState(v.p.pos());
-				if (now.isAir() || !now.getFluidState().isEmpty()) {
+				if (!now.is(Blocks.VOID_AIR) && (now.isAir() || !now.getFluidState().isEmpty())) {
 					verified.put(v.p.pos(), 3);
 					continue;
 				}
@@ -244,19 +257,32 @@ public class SeedOreFinder extends Module {
 		}
 		count = list.size();
 		int n = list.size();
+		int unloadedDrawn = 0;
+		for (Visible v : list) if (!mc.level.isLoaded(v.p.pos())) unloadedDrawn++;
+		drawnUnloaded = unloadedDrawn;
+		// gentle "hologram" shimmer
+		float pulse = 0.85f + 0.15f * (float) Math.sin(System.currentTimeMillis() / 400.0);
 		for (int i = 0; i < n; i++) {
 			Visible v = list.get(i);
 			int c = BlockColors.get(v.p.block());
 			boolean confirmedHere = Integer.valueOf(1).equals(verified.get(v.p.pos()));
-			int fillA = v.real ? 55 : 25, lineA = v.real ? 220 : 110;
-			if (confirmedHere) {
-				fillA = 90;
-				lineA = 255;
-			}
+			// Estimated (unloaded terrain) predictions are drawn the same way, only a little dimmer.
+			boolean notHere = Integer.valueOf(2).equals(verified.get(v.p.pos()));
+			float strength = notHere ? 0.45f : v.real || confirmedHere ? 1f : 0.8f;
 			AABB ob = new AABB(v.p.pos()).deflate(0.06);
-			Render3D.box(ob, ColorUtil.withAlpha(c, fillA), ColorUtil.withAlpha(c, lineA), v.real ? 1.8f : 1.2f, true);
+			if (style.get() != Style.BOX) {
+				int a = (int) (255 * holoOpacity.get() * strength * pulse);
+				Render3D.hologram(new AABB(v.p.pos()).deflate(0.02), sprite(v.p.block()), (a << 24) | 0xFFFFFF);
+				Render3D.box(ob, 0, ColorUtil.withAlpha(c, (int) (200 * strength)), 1.2f, true);
+			}
+			if (style.get() != Style.HOLOGRAM) {
+				int fillA = (int) (55 * strength), lineA = (int) (230 * strength);
+				if (confirmedHere) fillA = 90;
+				Render3D.box(ob, ColorUtil.withAlpha(c, fillA), ColorUtil.withAlpha(c, lineA), 1.8f, true);
+			}
 			if (Render3D.look(ob))
-				Render3D.lookText(v.p.block().getName().getString() + (confirmedHere ? " \u00B7 confirmed" : v.real ? " \u00B7 predicted" : " \u00B7 predicted (estimated terrain)"), c);
+				Render3D.lookText(v.p.block().getName().getString() + (confirmedHere ? " \u00B7 confirmed" : notHere ? " \u00B7 predicted, not found here"
+					: v.real ? " \u00B7 predicted" : " \u00B7 predicted (unloaded chunk)"), c);
 		}
 		if (tracers.get()) for (int i = 0; i < Math.min(n, 10); i++) Render3D.tracer(Vec3.atCenterOf(list.get(i).p.pos()), ColorUtil.withAlpha(BlockColors.get(list.get(i).p.block()), 200), 1.5f);
 		if (labels.get()) {
@@ -304,6 +330,11 @@ public class SeedOreFinder extends Module {
 	}
 
 	public OrePredictor predictor() { return predictor; }
+
+	private int drawnUnloaded;
+
+	/** Predictions drawn last frame in chunks the game has not loaded (in-game test). */
+	public int drawnInUnloadedChunks() { return drawnUnloaded; }
 
 	/** Boxes drawn last frame (used by the in-game test). */
 	public int visibleCount() { return count; }

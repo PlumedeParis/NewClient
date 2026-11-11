@@ -31,7 +31,7 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 
 | Module | What it does |
 |---|---|
-| **SeedOreFinder** | Type the world seed and ZERØ predicts ores (diamonds, debris, emeralds, gold, iron, redstone, lapis, copper, coal, quartz). It runs Minecraft 1.21.11's **own ore generation code** locally, from the seed, against a private copy of the terrain you have loaded. An **Ore Type** option shows normal ores, deepslate ores or both. A live **seed match %** compares predictions with ores you can actually see, so you know immediately whether the seed works on that server. |
+| **SeedOreFinder** | Type the world seed and ZERØ predicts ores (diamonds, debris, emeralds, gold, iron, redstone, lapis, copper, coal, quartz). It runs Minecraft 1.21.11's **own ore generation code** locally, from the seed, against a private copy of the terrain you have loaded. Predictions are shown as **holograms** (a see-through copy of the real ore block, visible through walls) everywhere in the radius, **including chunks you have not loaded or cannot see**. An **Ore Type** option shows normal ores, deepslate ores or both. A live **seed match %** compares predictions with ores you can actually see, so you know immediately whether the seed works on that server. |
 
 **Measured accuracy** (automated test against the real world generator, inner 3×3 chunks):
 
