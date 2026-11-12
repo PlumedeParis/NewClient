@@ -69,10 +69,10 @@ public class SeedOreFinder extends Module {
 	private final BoolSetting quartz = add(new BoolSetting("Quartz", "Nether quartz ore", false));
 	private final NumberSetting radius = add(new NumberSetting("Radius", "Prediction radius in chunks (does not need loaded chunks)", 6, 1, 16, 1, " ch"));
 	private final BoolSetting unloaded = add(new BoolSetting("Unloaded Chunks", "Also predict ores in chunks you haven't loaded / can't see", true));
+	private final dev.zero.setting.ButtonSetting colors = add(new dev.zero.setting.ButtonSetting("Block Colors", "Choose the color of each ore / block", "\u25C8 Block Colors \u203A", () -> net.minecraft.client.Minecraft.getInstance().setScreen(new dev.zero.gui.BlockColorScreen(net.minecraft.client.Minecraft.getInstance().screen))));
 	private final BoolSetting dimUnmatched = add(new BoolSetting("Dim Unmatched", "Draw predictions that don't match what you see dimmer (off = all look the same)", false));
 	private final BoolSetting hideMined = add(new BoolSetting("Hide Mined", "Hide predictions that are visibly mined out", true));
 	private final BoolSetting tracers = add(new BoolSetting("Tracers", "Tracers to the nearest predicted ores", false));
-	private final BoolSetting labels = add(new BoolSetting("Labels", "Name + distance on the nearest ores", true));
 	private final BoolSetting hud = add(new BoolSetting("HUD", "Show prediction status and seed match", true));
 
 	private final OrePredictor predictor = new OrePredictor();
@@ -311,7 +311,9 @@ public class SeedOreFinder extends Module {
 			AABB ob = new AABB(v.p.pos()).deflate(0.06);
 			if (style.get() != Style.BOX) {
 				int a = (int) (255 * holoOpacity.get() * strength * pulse);
-				Render3D.hologram(new AABB(v.p.pos()).deflate(0.02), sprite(v.p.block()), (a << 24) | 0xFFFFFF);
+				// your Block Colors choice tints the hologram; otherwise the real texture is shown as-is
+				int tint = BlockColors.isCustom(v.p.block()) ? ColorUtil.brighten(BlockColors.get(v.p.block()), 0.35f) & 0xFFFFFF : 0xFFFFFF;
+				Render3D.hologram(new AABB(v.p.pos()).deflate(0.02), sprite(v.p.block()), (a << 24) | tint);
 				Render3D.box(ob, 0, ColorUtil.withAlpha(c, (int) (200 * strength)), 1.2f, true);
 			}
 			if (style.get() != Style.HOLOGRAM) {
@@ -324,13 +326,6 @@ public class SeedOreFinder extends Module {
 					: v.real ? " \u00B7 predicted" : " \u00B7 predicted (unloaded chunk)"), c);
 		}
 		if (tracers.get()) for (int i = 0; i < Math.min(n, 10); i++) Render3D.tracer(Vec3.atCenterOf(list.get(i).p.pos()), ColorUtil.withAlpha(BlockColors.get(list.get(i).p.block()), 200), 1.5f);
-		if (labels.get()) {
-			for (int i = 0; i < Math.min(n, 12); i++) {
-				Visible v = list.get(i);
-				String tag = v.real ? "" : " §8~";
-				Render3D.label(Vec3.atCenterOf(v.p.pos()).add(0, 0.8, 0), v.p.block().getName().getString() + tag + " §7" + (int) v.dist + "m", BlockColors.get(v.p.block()), 0.9f);
-			}
-		}
 	}
 
 	@Override

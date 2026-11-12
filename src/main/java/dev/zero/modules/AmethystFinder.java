@@ -5,6 +5,7 @@ import dev.zero.module.ChunkFinderModule;
 import dev.zero.module.HuntTarget;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.ColorSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.util.ColorUtil;
 import dev.zero.util.WorldUtil;
@@ -39,6 +40,7 @@ public class AmethystFinder extends ChunkFinderModule<AmethystFinder.ChunkBuds> 
 	private final BoolSetting countLarge = add(new BoolSetting("Count Large Buds", "Treat large buds as almost grown (more sensitive)", false)).onChange(this::markChanged);
 	private final BoolSetting clusterBoxes = add(new BoolSetting("Cluster Boxes", "Highlight each fully grown cluster of flagged geodes", true));
 	private final BoolSetting tracers = add(new BoolSetting("Tracers", "Tracers to flagged geodes", true));
+	private final ColorSetting geodeColor = add(new ColorSetting("Color", "Color of grown geodes", 0xFFFF4DD8, false));
 
 	private static final Set<Block> BUDS = Set.of(Blocks.SMALL_AMETHYST_BUD, Blocks.MEDIUM_AMETHYST_BUD, Blocks.LARGE_AMETHYST_BUD, Blocks.AMETHYST_CLUSTER);
 
@@ -229,7 +231,7 @@ public class AmethystFinder extends ChunkFinderModule<AmethystFinder.ChunkBuds> 
 	public void onRender3D(float pt) {
 		Vec3 cam = WorldUtil.cameraPos();
 		for (Geode g : flagged) {
-			int color = ColorUtil.lerp(0xFFB98CFF, 0xFFFF4DD8, Math.min(1f, (g.ratio() - 0.5f) * 2));
+			int color = geodeColor.get();
 			Render3D.box(g.bounds(), ColorUtil.withAlpha(color, 30), ColorUtil.withAlpha(color, 230), 2f, true);
 			if (clusterBoxes.get()) for (BlockPos p : g.clusterPositions()) {
 				if (!mc.level.getBlockState(p).is(Blocks.AMETHYST_CLUSTER)) continue;

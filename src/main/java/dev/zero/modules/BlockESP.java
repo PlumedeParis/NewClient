@@ -40,6 +40,7 @@ public class BlockESP extends ScanningModule {
 		Blocks.DIAMOND_ORE, Blocks.DEEPSLATE_DIAMOND_ORE, Blocks.ANCIENT_DEBRIS,
 		Blocks.EMERALD_ORE, Blocks.DEEPSLATE_EMERALD_ORE))).onChange(this::rescan);
 	private final BoolSetting exposedOnly = add(new BoolSetting("Exposed Only", "Only blocks touching air/water/lava: ignores anti-xray fake ores", false)).onChange(this::rescan);
+	private final dev.zero.setting.ButtonSetting colors = add(new dev.zero.setting.ButtonSetting("Block Colors", "Choose the color of each ore / block", "\u25C8 Block Colors \u203A", () -> net.minecraft.client.Minecraft.getInstance().setScreen(new dev.zero.gui.BlockColorScreen(net.minecraft.client.Minecraft.getInstance().screen))));
 	private final EnumSetting<Style> style = add(new EnumSetting<>("Style", "How highlighted blocks are drawn", Style.BOTH));
 	private final EnumSetting<ColorMode> colorMode = add(new EnumSetting<>("Color Mode", "Per-block palette or one custom color", ColorMode.PER_BLOCK));
 	private final ColorSetting color = add(new ColorSetting("Color", "Custom color", 0xFF5CF2FF, false)).visibleWhen(() -> colorMode.get() == ColorMode.CUSTOM);

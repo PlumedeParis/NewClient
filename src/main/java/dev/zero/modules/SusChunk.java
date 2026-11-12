@@ -9,6 +9,7 @@ import dev.zero.module.HuntTarget;
 import dev.zero.module.ScanningModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.ColorSetting;
 import dev.zero.setting.EnumSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.util.ChatUtil;
@@ -70,6 +71,10 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	private final NumberSetting highwayWidth = add(new NumberSetting("Highway Width", "Half-width of the ignored highway band", 24, 4, 128, 4, "m")).visibleWhen(ignoreHighways::get).onChange(this::rescan);
 	private final EnumSetting<AgeOverlay> ageOverlay = add(new EnumSetting<>("Chunk Age", "Overlay old / new generated chunks (trail following)", AgeOverlay.OFF));
 	private final NumberSetting overlayY = add(new NumberSetting("Overlay Height", "Y offset of the age overlay below the camera", 8, -64, 64, 1)).visibleWhen(() -> ageOverlay.get() != AgeOverlay.OFF);
+	private final ColorSetting lowColor = add(new ColorSetting("Low Color", "Color of weakly suspicious chunks", 0xFFFFE066, false));
+	private final ColorSetting highColor = add(new ColorSetting("High Color", "Color of very suspicious chunks", 0xFFFF3B6B, false));
+	private final ColorSetting newChunkColor = add(new ColorSetting("New Chunk Color", "Chunk age overlay: new chunks", 0xFFFF4D6D, false));
+	private final ColorSetting oldChunkColor = add(new ColorSetting("Old Chunk Color", "Chunk age overlay: old chunks", 0xFF4ADE80, false));
 	private final BoolSetting labels = add(new BoolSetting("Labels", "Show score and reasons", true));
 	private final BoolSetting notify = add(new BoolSetting("Notify", "Toast + chat when a chunk passes the alert score", true));
 	private final BoolSetting sound = add(new BoolSetting("Sound", "Local sound on alerts", true));
@@ -394,7 +399,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 			Result r = e.getValue();
 			ChunkPos cp = new ChunkPos(e.getLongKey());
 			float heat = Math.min(1f, r.score / alert);
-			int color = ColorUtil.lerp(0xFFFFE066, 0xFFFF3B6B, heat);
+			int color = ColorUtil.lerp(lowColor.get(), highColor.get(), heat);
 			int y1 = r.minY == Integer.MAX_VALUE ? (int) cam.y - 2 : r.minY - 1;
 			int y2 = r.maxY == Integer.MIN_VALUE ? y1 + 4 : r.maxY + 2;
 			AABB box = new AABB(cp.getMinBlockX(), y1, cp.getMinBlockZ(), cp.getMaxBlockX() + 1, y2, cp.getMaxBlockZ() + 1);
@@ -413,7 +418,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 				Age age = e.getValue();
 				boolean show = age == Age.NEW ? (mode == AgeOverlay.NEW || mode == AgeOverlay.BOTH) : age == Age.OLD && (mode == AgeOverlay.OLD || mode == AgeOverlay.BOTH);
 				if (!show) continue;
-				int color = age == Age.NEW ? 0xFFFF4D6D : 0xFF4ADE80;
+				int color = age == Age.NEW ? newChunkColor.get() : oldChunkColor.get();
 				ChunkPos cp = new ChunkPos(e.getLongKey());
 				Render3D.chunkSquare(cp.x, cp.z, y, ColorUtil.withAlpha(color, 45), ColorUtil.withAlpha(color, 110), 1f);
 			}

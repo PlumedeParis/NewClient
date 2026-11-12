@@ -39,6 +39,7 @@ public class SpawnerESP extends ScanningModule {
 	private final BoolSetting trial = add(new BoolSetting("Trial Spawners", "Trial chamber spawners", true)).onChange(this::rescan);
 	private final EnumSetting<ColorMode> colorMode = add(new EnumSetting<>("Color Mode", "Color by mob type or one color", ColorMode.BY_MOB));
 	private final ColorSetting color = add(new ColorSetting("Color", "Spawner color", 0xFFFF55FF, false)).visibleWhen(() -> colorMode.get() == ColorMode.SINGLE);
+	private final ColorSetting trialColor = add(new ColorSetting("Trial Color", "Trial spawner color", 0xFFFF8A3D, false)).visibleWhen(() -> colorMode.get() == ColorMode.BY_MOB);
 	private final NumberSetting fillAlpha = add(new NumberSetting("Fill Opacity", "Box fill opacity", 50, 0, 255, 1));
 	private final NumberSetting lineWidth = add(new NumberSetting("Line Width", "Outline thickness", 2, 0.5, 6, 0.5));
 	private final NumberSetting range = add(new NumberSetting("Range", "Max distance", 256, 16, 512, 8, "m"));
@@ -126,7 +127,7 @@ public class SpawnerESP extends ScanningModule {
 
 	private int colorOf(Entry e) {
 		if (colorMode.get() == ColorMode.SINGLE) return color.get();
-		if (e.trial) return 0xFFFF8A3D;
+		if (e.trial) return trialColor.get();
 		Integer c = MOB_COLORS.get(e.mob);
 		if (c != null) return c;
 		return ColorUtil.fromHsv((e.mob.hashCode() & 0xFFFF) / 65535f, 0.65f, 1f, 255);

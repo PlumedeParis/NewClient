@@ -73,6 +73,18 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 	private final BoolSetting sound = add(new BoolSetting("Sound", "Play a local sound on finds", true));
 	private final BoolSetting save = add(new BoolSetting("Save Finds", "Save finds to config/zero/finds", true));
 	private final BoolSetting hudList = add(new BoolSetting("HUD List", "List nearby finds on the HUD", true));
+	private final dev.zero.setting.ColorSetting baseColor = add(new dev.zero.setting.ColorSetting("Base Color", "Color of bases", 0xFFFF5C7A, false));
+	private final dev.zero.setting.ColorSetting stashColor = add(new dev.zero.setting.ColorSetting("Stash Color", "Color of stashes", 0xFFFFB347, false));
+	private final dev.zero.setting.ColorSetting possibleColor = add(new dev.zero.setting.ColorSetting("Possible Color", "Color of possible bases", 0xFFFFE066, false));
+
+	private int col(Kind k) {
+		return switch (k) {
+			case BASE -> baseColor.get();
+			case STASH -> stashColor.get();
+			case POSSIBLE -> possibleColor.get();
+			default -> k.color;
+		};
+	}
 
 	// ---- Rules ----------------------------------------------------------------------------
 	private static final int STORAGE = 1, STRONG = 2, VILLAGE_COMMON = 4, STRUCTURE_COMMON = 8;
@@ -393,7 +405,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		if (BaseRadar.quietMode()) return;
 		if (notify.get()) Notifications.push(kind.title + " found!", WorldUtil.fmt(c) + "  •  " + summary, Notifications.Type.FOUND, 7000);
 		if (chat.get()) {
-			ChatUtil.info(Component.literal(kind.title + " ").withStyle(s -> s.withColor(kind.color & 0xFFFFFF).withBold(true))
+			ChatUtil.info(Component.literal(kind.title + " ").withStyle(s -> s.withColor(col(kind) & 0xFFFFFF).withBold(true))
 				.append(Component.literal("at " + WorldUtil.fmt(c) + " ").withStyle(ChatFormatting.WHITE))
 				.append(Component.literal("(" + summary + ")").withStyle(ChatFormatting.GRAY)));
 		}
@@ -423,7 +435,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 			ChunkResult r = e.getValue();
 			if (r.kind == null) continue;
 			drawnChunks.add(e.getLongKey());
-			int color = r.kind.color;
+			int color = col(r.kind);
 			if (highlightChunks.get() && r.bounds != null) Render3D.box(r.bounds, ColorUtil.withAlpha(color, 28), ColorUtil.withAlpha(color, 200), 2f, true);
 			if (highlightBlocks.get()) {
 				for (BlockPos p : r.highlights) {
@@ -446,7 +458,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 				if (drawnChunks.contains(ChunkPos.asLong(f.x >> 4, f.z >> 4))) continue;
 				Vec3 pos = new Vec3(f.x + 0.5, f.y + 0.5, f.z + 0.5);
 				if (pos.distanceTo(cam) > max) continue;
-				Render3D.waypoint(pos, f.kind.color, f.kind.title);
+				Render3D.waypoint(pos, col(f.kind), f.kind.title);
 			}
 		}
 	}
@@ -464,15 +476,15 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		int h = 16 + rows * rowH;
 		int[] pos = dev.zero.hud.Hud.slot("Bases nearby", w, h);
 		int x = pos[0], y = pos[1];
-		Render2D.glow(g, x, y, w, h, 5, ColorUtil.withAlpha(Kind.BASE.color, 50), 4);
+		Render2D.glow(g, x, y, w, h, 5, ColorUtil.withAlpha(col(Kind.BASE), 50), 4);
 		Render2D.roundedRect(g, x, y, w, h, 5, 0xE0101016);
-		Render2D.gradientH(g, x + 5, y, w - 10, 1, ClientSettings.accent(), Kind.BASE.color);
+		Render2D.gradientH(g, x + 5, y, w - 10, 1, ClientSettings.accent(), col(Kind.BASE));
 		Render2D.text(g, "Bases nearby", x + 6, y + 4, 0xFFFFFFFF, false);
-		Render2D.text(g, String.valueOf(list.size()), x + w - 6 - Render2D.width(String.valueOf(list.size())), y + 4, Kind.BASE.color, false);
+		Render2D.text(g, String.valueOf(list.size()), x + w - 6 - Render2D.width(String.valueOf(list.size())), y + 4, col(Kind.BASE), false);
 		for (int i = 0; i < rows; i++) {
 			ChunkResult r = list.get(i);
 			int ry = y + 15 + i * rowH;
-			Render2D.rect(g, x + 6, ry + 2, 3, 5, r.kind.color);
+			Render2D.rect(g, x + 6, ry + 2, 3, 5, col(r.kind));
 			String coords = ClientSettings.STREAMER.get() ? "" : " " + r.center.getX() + " " + r.center.getZ();
 			Render2D.text(g, r.kind.title + "§7" + coords, x + 12, ry, 0xFFE6E6F0, false);
 			String d = WorldUtil.distance(cam.distanceTo(Vec3.atCenterOf(r.center))) + " " + WorldUtil.direction(cam, r.center.getX(), r.center.getZ());
@@ -489,7 +501,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 				case BASE -> 75;
 				default -> 30;
 			};
-			out.add(new HuntTarget(r.center, s + Math.min(40, r.score() / 5), r.kind.title, r.kind.color));
+			out.add(new HuntTarget(r.center, s + Math.min(40, r.score() / 5), r.kind.title, col(r.kind)));
 		}
 	}
 

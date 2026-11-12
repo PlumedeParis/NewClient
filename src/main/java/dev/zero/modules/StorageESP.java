@@ -66,7 +66,11 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 	private final BoolSetting dyeShulkers = add(new BoolSetting("Dye Shulkers", "Use each shulker's dye color", true));
 	private final ColorSetting shulkerColor = add(new ColorSetting("Shulker Color", "Undyed shulker color", 0xFFE879F9, false));
 	private final ColorSetting barrelColor = add(new ColorSetting("Barrel Color", "Barrel color", 0xFFC08A5B, false));
-	private final ColorSetting otherColor = add(new ColorSetting("Other Color", "Hoppers, furnaces, dispensers...", 0xFF9CA3AF, false));
+	private final ColorSetting hopperColor = add(new ColorSetting("Hopper Color", "Hopper color", 0xFF9CA3AF, false));
+	private final ColorSetting furnaceColor = add(new ColorSetting("Furnace Color", "Furnace / smoker / blast furnace color", 0xFFB0B0B0, false));
+	private final ColorSetting dispenserColor = add(new ColorSetting("Dispenser Color", "Dispenser / dropper color", 0xFF8A8A8A, false));
+	private final ColorSetting brewingColor = add(new ColorSetting("Brewing Color", "Brewing stand color", 0xFFE6C15A, false));
+	private final ColorSetting entityColor = add(new ColorSetting("Entity Color", "Chest minecarts / chest boats color", 0xFFFFB347, false));
 
 	private final EnumSetting<Style> style = add(new EnumSetting<>("Style", "How storage is drawn", Style.BOTH));
 	private final NumberSetting fillAlpha = add(new NumberSetting("Fill Opacity", "Opacity of the box fill", 45, 0, 255, 1)).visibleWhen(() -> style.get() != Style.OUTLINE);
@@ -173,7 +177,10 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 			case ENDER -> enderColor.get();
 			case SHULKER -> dyeShulkers.get() && e.dye != 0 ? e.dye : shulkerColor.get();
 			case BARREL -> barrelColor.get();
-			default -> otherColor.get();
+			case HOPPER -> hopperColor.get();
+			case FURNACE -> furnaceColor.get();
+			case DISPENSER -> dispenserColor.get();
+			case BREWING -> brewingColor.get();
 		};
 	}
 
@@ -221,8 +228,8 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 				if (d > max) continue;
 				AABB bb = en.getBoundingBox().move(
 					Mth.lerp(pt, en.xo, en.getX()) - en.getX(), Mth.lerp(pt, en.yo, en.getY()) - en.getY(), Mth.lerp(pt, en.zo, en.getZ()) - en.getZ());
-				draw(bb, chestColor.get(), d);
-				if (Render3D.look(bb)) Render3D.lookText(en.getName().getString(), chestColor.get());
+				draw(bb, entityColor.get(), d);
+				if (Render3D.look(bb)) Render3D.lookText(en.getName().getString(), entityColor.get());
 			}
 		}
 	}

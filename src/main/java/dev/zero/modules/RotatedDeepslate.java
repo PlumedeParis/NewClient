@@ -5,6 +5,7 @@ import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.ColorSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.util.ColorUtil;
 import dev.zero.util.WorldUtil;
@@ -30,6 +31,8 @@ public class RotatedDeepslate extends ChunkFinderModule<RotatedDeepslate.Found> 
 	private final BoolSetting cobbled = add(new BoolSetting("Cobbled Deepslate", "Also flag cobbled deepslate (player-made)", true)).onChange(this::rescan);
 	private final NumberSetting alertCount = add(new NumberSetting("Alert Count", "Blocks in a chunk to send an alert", 3, 1, 50, 1));
 	private final BoolSetting tracers = add(new BoolSetting("Tracers", "Tracers to flagged chunks", false));
+	private final ColorSetting rotatedColor = add(new ColorSetting("Rotated Color", "Sideways deepslate color", 0xFF60A5FA, false));
+	private final ColorSetting cobbledColor = add(new ColorSetting("Cobbled Color", "Cobbled deepslate color", 0xFFA5B4FC, false));
 
 	public record Found(List<BlockPos> rotated, List<BlockPos> cobbled) {
 		int total() { return rotated.size() + cobbled.size(); }
@@ -92,19 +95,19 @@ public class RotatedDeepslate extends ChunkFinderModule<RotatedDeepslate.Found> 
 			for (BlockPos p : f.rotated()) {
 				if (!mc.level.getBlockState(p).is(Blocks.DEEPSLATE)) continue;
 				AABB b = new AABB(p).deflate(0.01);
-				Render3D.box(b, 0x403B82F6, 0xFF60A5FA, 1.6f, true);
-				if (Render3D.look(b)) Render3D.lookText("Deepslate placed sideways \u00B7 player-made", 0xFF60A5FA);
+				Render3D.box(b, ColorUtil.withAlpha(rotatedColor.get(), 0x40), rotatedColor.get(), 1.6f, true);
+				if (Render3D.look(b)) Render3D.lookText("Deepslate placed sideways \u00B7 player-made", rotatedColor.get());
 			}
 			for (BlockPos p : f.cobbled()) {
 				if (!mc.level.getBlockState(p).is(Blocks.COBBLED_DEEPSLATE)) continue;
 				AABB b = new AABB(p).deflate(0.01);
-				Render3D.box(b, 0x30A5B4FC, 0xC0A5B4FC, 1.2f, true);
-				if (Render3D.look(b)) Render3D.lookText("Cobbled Deepslate \u00B7 player-made", 0xFFA5B4FC);
+				Render3D.box(b, ColorUtil.withAlpha(cobbledColor.get(), 0x30), ColorUtil.withAlpha(cobbledColor.get(), 0xC0), 1.2f, true);
+				if (Render3D.look(b)) Render3D.lookText("Cobbled Deepslate \u00B7 player-made", cobbledColor.get());
 			}
 			BlockPos first = !f.rotated().isEmpty() ? f.rotated().get(0) : f.cobbled().get(0);
-			if (tracers.get()) Render3D.tracer(Vec3.atCenterOf(first), 0xD060A5FA, 1.5f);
+			if (tracers.get()) Render3D.tracer(Vec3.atCenterOf(first), ColorUtil.withAlpha(rotatedColor.get(), 0xD0), 1.5f);
 			if (f.total() >= alertCount.getInt())
-				Render3D.label(Vec3.atCenterOf(first).add(0, 1.2, 0), "PLACED DEEPSLATE " + f.total() + " §7" + WorldUtil.distance(cam.distanceTo(Vec3.atCenterOf(first))), 0xFF60A5FA, 1f);
+				Render3D.label(Vec3.atCenterOf(first).add(0, 1.2, 0), "PLACED DEEPSLATE " + f.total() + " §7" + WorldUtil.distance(cam.distanceTo(Vec3.atCenterOf(first))), rotatedColor.get(), 1f);
 		}
 	}
 

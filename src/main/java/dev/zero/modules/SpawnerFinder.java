@@ -5,6 +5,7 @@ import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.ColorSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.util.ColorUtil;
 import dev.zero.util.WorldUtil;
@@ -42,6 +43,9 @@ public class SpawnerFinder extends ChunkFinderModule<SpawnerFinder.Spawners> imp
 	private final NumberSetting farmSize = add(new NumberSetting("Farm Size", "Same-type mobs in one chunk to flag a farm", 16, 6, 100, 1)).visibleWhen(farms::get);
 	private final NumberSetting itemPile = add(new NumberSetting("Item Pile", "Dropped item entities in one chunk to flag (0 = off)", 40, 0, 300, 5)).visibleWhen(farms::get);
 	private final BoolSetting tracers = add(new BoolSetting("Tracers", "Tracers to player spawners and farms", true));
+	private final ColorSetting playerColor = add(new ColorSetting("Spawner Color", "Player-placed spawner color", 0xFFFF55FF, false));
+	private final ColorSetting naturalColor = add(new ColorSetting("Natural Color", "Natural spawner color", 0xFF9CA3AF, false));
+	private final ColorSetting farmColor = add(new ColorSetting("Farm Color", "Mob farm color", 0xFFFFB347, false));
 
 	public record Spawner(BlockPos pos, String mob, boolean natural, String reason) {}
 
@@ -151,7 +155,7 @@ public class SpawnerFinder extends ChunkFinderModule<SpawnerFinder.Spawners> imp
 		for (Spawners s : results.values()) {
 			for (Spawner sp : s.list()) {
 				if (sp.natural() && !showNatural.get()) continue;
-				int color = sp.natural() ? 0xFF9CA3AF : 0xFFFF55FF;
+				int color = sp.natural() ? naturalColor.get() : playerColor.get();
 				Render3D.box(new AABB(sp.pos()), ColorUtil.withAlpha(color, 50), ColorUtil.withAlpha(color, 240), 2f, true);
 				if (!sp.natural() && tracers.get()) Render3D.tracer(Vec3.atCenterOf(sp.pos()), ColorUtil.withAlpha(color, 200), 1.6f);
 				Render3D.label(Vec3.atCenterOf(sp.pos()).add(0, 1, 0), (sp.natural() ? "spawner " : "PLAYER SPAWNER ") + sp.mob() + " §7"
@@ -159,7 +163,7 @@ public class SpawnerFinder extends ChunkFinderModule<SpawnerFinder.Spawners> imp
 			}
 		}
 		for (Farm f : farmResults.values()) {
-			int color = 0xFFFFB347;
+			int color = farmColor.get();
 			Render3D.box(new AABB(f.center().subtract(2, 1, 2), f.center().add(2, 2, 2)), ColorUtil.withAlpha(color, 25), ColorUtil.withAlpha(color, 200), 1.5f, true);
 			if (tracers.get()) Render3D.tracer(f.center(), ColorUtil.withAlpha(color, 180), 1.4f);
 			Render3D.label(f.center().add(0, 2.6, 0), "FARM " + f.count() + " " + f.what() + " §7" + WorldUtil.distance(cam.distanceTo(f.center())), color, 1f);

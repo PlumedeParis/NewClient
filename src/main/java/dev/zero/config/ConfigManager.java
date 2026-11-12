@@ -82,6 +82,7 @@ public final class ConfigManager {
 			if (root.has("client")) ClientSettings.fromJson(root.getAsJsonObject("client"));
 			if (root.has("gui")) ClickGuiScreen.loadLayout(root.getAsJsonObject("gui"));
 			if (root.has("hud")) HudLayout.load(root.getAsJsonObject("hud"));
+			if (root.has("blockColors")) dev.zero.util.BlockColors.load(root.getAsJsonObject("blockColors"));
 			if (root.has("modules")) {
 				JsonObject mods = root.getAsJsonObject("modules");
 				for (Module m : ModuleManager.all()) if (mods.has(m.getName())) m.fromJson(mods.getAsJsonObject(m.getName()));
@@ -98,6 +99,7 @@ public final class ConfigManager {
 			root.add("client", ClientSettings.toJson());
 			root.add("gui", ClickGuiScreen.saveLayout());
 			root.add("hud", HudLayout.save());
+			root.add("blockColors", dev.zero.util.BlockColors.save());
 			JsonObject mods = new JsonObject();
 			for (Module m : ModuleManager.all()) mods.add(m.getName(), m.toJson());
 			root.add("modules", mods);
@@ -228,5 +230,6 @@ public final class ConfigManager {
 		for (Setting s : ClientSettings.SETTINGS) s.reset();
 		ClickGuiScreen.clearLayout();
 		HudLayout.clear();
+		dev.zero.util.BlockColors.clearCustom();
 	}
 }

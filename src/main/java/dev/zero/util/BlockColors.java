@@ -36,7 +36,48 @@ public final class BlockColors {
 		for (Block b : blocks) COLORS.put(b, color);
 	}
 
+	/** User-chosen colors (Block Colors editor), saved in the profile. */
+	private static final Map<Block, Integer> CUSTOM = new IdentityHashMap<>();
+
+	public static boolean isCustom(Block block) { return CUSTOM.containsKey(block); }
+
+	public static void setCustom(Block block, int argb) { CUSTOM.put(block, argb | 0xFF000000); }
+
+	public static void resetCustom(Block block) { CUSTOM.remove(block); }
+
+	public static void clearCustom() { CUSTOM.clear(); }
+
+	/** The built-in color, ignoring user overrides. */
+	public static int defaultColor(Block block) {
+		Integer c = COLORS.get(block);
+		if (c != null) return c;
+		int map = block.defaultMapColor().col;
+		return map == 0 ? 0xFFFFFFFF : 0xFF000000 | map;
+	}
+
+	public static com.google.gson.JsonObject save() {
+		com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+		for (Map.Entry<Block, Integer> e : CUSTOM.entrySet())
+			o.addProperty(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(e.getKey()).toString(), String.format("#%08X", e.getValue()));
+		return o;
+	}
+
+	public static void load(com.google.gson.JsonObject o) {
+		CUSTOM.clear();
+		for (String key : o.keySet()) {
+			var id = net.minecraft.resources.Identifier.tryParse(key);
+			if (id == null) continue;
+			try {
+				int c = (int) Long.parseLong(o.get(key).getAsString().replace("#", ""), 16);
+				net.minecraft.core.registries.BuiltInRegistries.BLOCK.getOptional(id).ifPresent(b -> CUSTOM.put(b, c));
+			} catch (Exception ignored) {
+			}
+		}
+	}
+
 	public static int get(Block block) {
+		Integer custom = CUSTOM.get(block);
+		if (custom != null) return custom;
 		Integer c = COLORS.get(block);
 		if (c != null) return c;
 		int map = block.defaultMapColor().col;

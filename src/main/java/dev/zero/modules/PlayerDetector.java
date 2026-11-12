@@ -55,6 +55,7 @@ public class PlayerDetector extends Module {
 	private final BoolSetting nametags = add(new BoolSetting("Nametags", "Name, health and distance through walls", true));
 	private final ColorSetting color = add(new ColorSetting("Color", "Player color", 0xFFFF4D6D, false));
 	private final ColorSetting friendColor = add(new ColorSetting("Friend Color", "Friend color", 0xFF4ADE80, false));
+	private final ColorSetting logoutColor = add(new ColorSetting("Logout Color", "Logout spot color", 0xFF9CA3AF, false));
 	private final BoolSetting radar = add(new BoolSetting("Radar HUD", "List of nearby players on the HUD", true));
 	private final BoolSetting logoutSpots = add(new BoolSetting("Logout Spots", "Mark where players logged out", true));
 	private final EnumSetting<JoinAlerts> joinAlerts = add(new EnumSetting<>("Join/Leave", "Tab-list join and leave alerts", JoinAlerts.FRIENDS));
@@ -234,10 +235,10 @@ public class PlayerDetector extends Module {
 			String dim = WorldUtil.dimensionName(mc.level);
 			for (LogoutSpot l : logouts) {
 				if (!l.dim.equals(dim)) continue;
-				Render3D.box(l.box, 0x309CA3AF, 0xC09CA3AF, 1.5f, true);
-				if (Render3D.look(l.box)) Render3D.lookText(l.name + " \u00B7 logout spot", 0xFF9CA3AF);
+				Render3D.box(l.box, ColorUtil.withAlpha(logoutColor.get(), 0x30), ColorUtil.withAlpha(logoutColor.get(), 0xC0), 1.5f, true);
+				if (Render3D.look(l.box)) Render3D.lookText(l.name + " \u00B7 logout spot", logoutColor.get());
 				long mins = (System.currentTimeMillis() - l.time) / 60000;
-				Render3D.label(new Vec3(l.box.getCenter().x, l.box.maxY + 0.4, l.box.getCenter().z), l.name + " §7logout " + mins + "m ago", 0xFFCBD5E1, 1f);
+				Render3D.label(new Vec3(l.box.getCenter().x, l.box.maxY + 0.4, l.box.getCenter().z), l.name + " §7logout " + mins + "m ago", logoutColor.get(), 1f);
 			}
 		}
 	}

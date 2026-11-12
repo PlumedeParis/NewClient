@@ -25,6 +25,7 @@ public class Freecam extends Module {
 	private final NumberSetting boost = add(new NumberSetting("Sprint Boost", "Speed multiplier while sprint is held", 2.5, 1.0, 6.0, 0.1));
 	private final BoolSetting smooth = add(new BoolSetting("Smooth", "Cinematic acceleration and glide", true));
 	private final BoolSetting showPlayer = add(new BoolSetting("Player Box", "Outline where your real player stands", true));
+	private final dev.zero.setting.ColorSetting boxColor = add(new dev.zero.setting.ColorSetting("Box Color", "Color of your real player's box", 0xFF8B7CFF, false));
 	private final BoolSetting disableOnDamage = add(new BoolSetting("Disable On Damage", "Snap back if your player takes damage", true));
 
 	private Vec3 pos = Vec3.ZERO, prevPos = Vec3.ZERO, velocity = Vec3.ZERO;
@@ -120,7 +121,7 @@ public class Freecam extends Module {
 			Mth.lerp(partialTick, mc.player.xo, mc.player.getX()) - mc.player.getX(),
 			Mth.lerp(partialTick, mc.player.yo, mc.player.getY()) - mc.player.getY(),
 			Mth.lerp(partialTick, mc.player.zo, mc.player.getZ()) - mc.player.getZ());
-		int c = ClientSettings.accent();
+		int c = boxColor.get();
 		Render3D.box(box, ColorUtil.withAlpha(c, 35), ColorUtil.withAlpha(c, 220), 2f, true);
 	}
 }

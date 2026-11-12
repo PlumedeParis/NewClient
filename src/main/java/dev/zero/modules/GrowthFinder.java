@@ -5,6 +5,7 @@ import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.ColorSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.util.ColorUtil;
 import dev.zero.util.WorldUtil;
@@ -33,6 +34,7 @@ public class GrowthFinder extends ChunkFinderModule<GrowthFinder.Growth> impleme
 	private final BoolSetting maxOnly = add(new BoolSetting("Max Age Only", "Only count fully grown (age 25) kelp", false)).onChange(this::rescan);
 	private final BoolSetting highlight = add(new BoolSetting("Highlight Kelp", "Box each grown kelp top", true));
 	private final BoolSetting chunkBox = add(new BoolSetting("Chunk Box", "Outline flagged chunks", true));
+	private final ColorSetting kelpColor = add(new ColorSetting("Color", "Color of grown kelp", 0xFF00FFA2, false));
 
 	public record Growth(int grown, int total, List<BlockPos> tops, int minY, int maxY, BlockPos center) {}
 
@@ -87,7 +89,7 @@ public class GrowthFinder extends ChunkFinderModule<GrowthFinder.Growth> impleme
 		Vec3 cam = WorldUtil.cameraPos();
 		for (var e : results.long2ObjectEntrySet()) {
 			Growth g = e.getValue();
-			int color = ColorUtil.lerp(0xFF7CE38B, 0xFF00FFA2, Math.min(1f, g.grown() / 30f));
+			int color = kelpColor.get();
 			int cx = net.minecraft.world.level.ChunkPos.getX(e.getLongKey()) << 4, cz = net.minecraft.world.level.ChunkPos.getZ(e.getLongKey()) << 4;
 			if (chunkBox.get()) Render3D.box(new AABB(cx, g.minY() - 1, cz, cx + 16, g.maxY() + 2, cz + 16), ColorUtil.withAlpha(color, 18), ColorUtil.withAlpha(color, 160), 1.4f, true);
 			if (highlight.get()) for (BlockPos p : g.tops()) {

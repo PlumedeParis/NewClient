@@ -15,6 +15,7 @@ import dev.zero.module.ModuleManager;
 import dev.zero.render.Render2D;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.ColorSetting;
 import dev.zero.setting.EnumSetting;
 import dev.zero.setting.KeybindSetting;
 import dev.zero.setting.NumberSetting;
@@ -59,6 +60,11 @@ public class BaseRadar extends Module {
 	private final BoolSetting quiet = add(new BoolSetting("Quiet Mode", "Silence the Hunt modules' own alerts; only alert strong new targets here", true));
 	private final NumberSetting alertScore = add(new NumberSetting("Alert Score", "Score for a BaseRadar alert", 90, 30, 300, 5));
 	private final BoolSetting hud = add(new BoolSetting("HUD", "Ranked list + mini radar", true));
+	private final ColorSetting rank1 = add(new ColorSetting("#1 Color", "Best target", 0xFFFF4D6D, false));
+	private final ColorSetting rank2 = add(new ColorSetting("#2 Color", "Second target", 0xFFFFB347, false));
+	private final ColorSetting rank3 = add(new ColorSetting("#3 Color", "Third target", 0xFFFFE066, false));
+	private final ColorSetting rankOther = add(new ColorSetting("Focus Color", "Other focused targets", 0xFF60A5FA, false));
+	private final ColorSetting markerColor = add(new ColorSetting("Marker Color", "Faint markers for the other targets", 0xFF94A3B8, false));
 	private final BoolSetting clearChecked = add(new BoolSetting("Clear Checked", "Turn on to forget every checked target", false));
 
 	public static final class Target {
@@ -257,12 +263,12 @@ public class BaseRadar extends Module {
 		return out;
 	}
 
-	private static int rankColor(int rank) {
+	private int rankColor(int rank) {
 		return switch (rank) {
-			case 0 -> 0xFFFF4D6D;
-			case 1 -> 0xFFFFB347;
-			case 2 -> 0xFFFFE066;
-			default -> 0xFF60A5FA;
+			case 0 -> rank1.get();
+			case 1 -> rank2.get();
+			case 2 -> rank3.get();
+			default -> rankOther.get();
 		};
 	}
 
@@ -287,7 +293,7 @@ public class BaseRadar extends Module {
 				Render3D.importantLabel(c.add(0, 1.6, 0), "#" + (i + 1) + " " + Math.round(t.score) + " §7" + why + " • " + WorldUtil.distance(cam.distanceTo(c)), color, 1f);
 				if (i == 0 && tracer.get()) Render3D.tracer(c, ColorUtil.withAlpha(color, 220), 2f);
 			} else if (others.get()) {
-				int color = t.checked ? 0xFF6B7280 : 0xFF94A3B8;
+				int color = t.checked ? 0xFF6B7280 : markerColor.get();
 				Render3D.box(new AABB(t.pos).inflate(0.2), ColorUtil.withAlpha(color, 25), ColorUtil.withAlpha(color, 120), 1f, true);
 				if (cam.distanceTo(c) < 64) Render3D.label(c.add(0, 1.2, 0), (t.checked ? "✔ " : "#" + (i + 1) + " ") + Math.round(t.score), color, 0.8f);
 			}
@@ -317,7 +323,7 @@ public class BaseRadar extends Module {
 		for (int i = 0; i < rows; i++) {
 			Target t = list.get(i);
 			int ry = y + 17 + i * rowH;
-			int color = t.checked ? 0xFF6B7280 : i < focus.getInt() ? rankColor(i) : 0xFF94A3B8;
+			int color = t.checked ? 0xFF6B7280 : i < focus.getInt() ? rankColor(i) : markerColor.get();
 			Render2D.text(g, (t.checked ? "✔" : "#" + (i + 1)), x + 6, ry, color, false);
 			Render2D.text(g, String.valueOf(Math.round(t.score)), x + 24, ry, 0xFFFFFFFF, false);
 			String d = WorldUtil.distance(t.dist) + " " + WorldUtil.direction(me, t.pos.getX(), t.pos.getZ());
@@ -342,7 +348,7 @@ public class BaseRadar extends Module {
 			double dist = Math.sqrt(rx * rx + rz * rz);
 			double scale = Math.min(1, dist / range) * rad / Math.max(dist, 1e-3);
 			int px = (int) (cx - rx * scale), py = (int) (cy - rz * scale);
-			int color = t.checked ? 0xFF6B7280 : i < focus.getInt() ? rankColor(i) : 0xFF94A3B8;
+			int color = t.checked ? 0xFF6B7280 : i < focus.getInt() ? rankColor(i) : markerColor.get();
 			Render2D.circle(g, px, py, i < focus.getInt() && !t.checked ? 2 : 1, color);
 		}
 		Render2D.circle(g, cx, cy, 2, 0xFFFFFFFF);

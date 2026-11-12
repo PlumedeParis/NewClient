@@ -5,6 +5,7 @@ import dev.zero.module.HuntTarget;
 import dev.zero.module.ChunkFinderModule;
 import dev.zero.render.Render3D;
 import dev.zero.setting.BoolSetting;
+import dev.zero.setting.ColorSetting;
 import dev.zero.setting.NumberSetting;
 import dev.zero.util.ColorUtil;
 import dev.zero.util.WorldUtil;
@@ -31,6 +32,9 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 	private final NumberSetting tunnelLength = add(new NumberSetting("Tunnel Length", "Min length of a tunnel", 8, 4, 16, 1)).onChange(this::rescan);
 	private final BoolSetting stairs = add(new BoolSetting("Staircases", "1-wide staircases going down", true)).onChange(this::rescan);
 	private final NumberSetting stairLength = add(new NumberSetting("Stair Length", "Min steps of a staircase", 6, 4, 16, 1)).onChange(this::rescan);
+	private final ColorSetting shaftColor = add(new ColorSetting("Shaft Color", "Color of dug shafts", 0xFFFF8A4C, false));
+	private final ColorSetting tunnelColor = add(new ColorSetting("Tunnel Color", "Color of dug tunnels", 0xFFFFD166, false));
+	private final ColorSetting stairsColor = add(new ColorSetting("Stairs Color", "Color of staircases", 0xFF4FD1C5, false));
 	private final NumberSetting alertSegments = add(new NumberSetting("Alert Segments", "Passages in a chunk to send an alert", 2, 1, 20, 1));
 
 	public enum Kind { SHAFT, TUNNEL, STAIRS }
@@ -236,9 +240,9 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 			boolean labeled = false;
 			for (Segment s : p.segments()) {
 				int color = switch (s.kind()) {
-					case SHAFT -> 0xFFFF8A4C;
-					case TUNNEL -> 0xFFFFD166;
-					case STAIRS -> 0xFF4FD1C5;
+					case SHAFT -> shaftColor.get();
+					case TUNNEL -> tunnelColor.get();
+					case STAIRS -> stairsColor.get();
 				};
 				Render3D.box(s.box(), ColorUtil.withAlpha(color, 40), ColorUtil.withAlpha(color, 220), 1.6f, true);
 				if (!labeled) {
