@@ -5,6 +5,6 @@
 	"name": "ZERØ Tests",
 	"environment": "client",
 	"entrypoints": {
-		"fabric-client-gametest": ["dev.zero.test.SeedAccuracyTest", "dev.zero.test.ZeroGameTest", "dev.zero.test.GuiOpenTest", "dev.zero.test.LookInfoTest", "dev.zero.test.ProfileHudTest", "dev.zero.test.ColorTest", "dev.zero.test.SafeMinerTest", "dev.zero.test.SusFullbrightTest", "dev.zero.test.DonutHunterTest"]
+		"fabric-client-gametest": ["dev.zero.test.SeedAccuracyTest", "dev.zero.test.ZeroGameTest", "dev.zero.test.GuiOpenTest", "dev.zero.test.LookInfoTest", "dev.zero.test.ProfileHudTest", "dev.zero.test.ColorTest", "dev.zero.test.SafeMinerTest", "dev.zero.test.SusFullbrightTest", "dev.zero.test.DonutHunterTest", "dev.zero.test.IntroTest"]
 	}
 }

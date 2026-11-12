@@ -81,6 +81,13 @@ X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **S
 
 ## Interface
 
+### Intro
+
+The first time you open the GUI after joining a world or a server, ZERØ plays a 6-second motion-graphics intro: letters flying in with motion trails and glow, a light slash through the Ø, a shine sweep, "CLIENT" tracking in, cinematic frame, "Development made by PlumeTheCat & ClaudeAI", a loading sequence, then the screen splits open on the GUI. All text is rasterised from a vector font (Montserrat, OFL) at your real screen resolution, so it is sharp at any size. Click / any key skips to the reveal, Esc skips it all. Client panel → Intro: once per join (default), every time, or off.
+
+[![ZERØ intro](docs/intro.png)](docs/intro.mp4)
+
+
 | Profiles | HUD editor | Title screen |
 |---|---|---|
 | ![](docs/profiles.png) | ![](docs/hud_editor.png) | ![](docs/title_screen.png) |

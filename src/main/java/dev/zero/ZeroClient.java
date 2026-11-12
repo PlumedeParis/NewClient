@@ -56,6 +56,8 @@ public final class ZeroClient implements ClientModInitializer {
 			// Auto-load the profile chosen for this server, once the join has finished (next tick).
 			if (world != null) profileCheckTicks = 20;
 		});
+		// joining a world / server (not a dimension change): the intro plays again on the next GUI open
+		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> dev.zero.gui.IntroScreen.onJoin());
 		WorldRenderEvents.END_MAIN.register(context -> render3D((MultiBufferSource.BufferSource) context.consumers()));
 		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), (g, d) -> {
 			long t = System.nanoTime();
@@ -121,7 +123,7 @@ public final class ZeroClient implements ClientModInitializer {
 			if (!HELD_KEYS.add(key)) continue; // still held from before
 			if (mc.screen != null) continue; // never react while typing in chat / menus
 			if (key == ClientSettings.GUI_KEY.get()) {
-				mc.setScreen(new ClickGuiScreen());
+				dev.zero.gui.IntroScreen.openGui();
 				continue;
 			}
 			for (Module m : ModuleManager.all()) {

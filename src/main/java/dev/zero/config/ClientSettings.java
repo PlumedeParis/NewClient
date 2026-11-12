@@ -21,6 +21,7 @@ public final class ClientSettings {
 	public static final List<Setting<?>> SETTINGS = new ArrayList<>();
 
 	public static final KeybindSetting GUI_KEY = add(new KeybindSetting("GUI Key", "Opens the ClickGUI", GLFW.GLFW_KEY_RIGHT_SHIFT));
+	public static final EnumSetting<dev.zero.gui.IntroScreen.Mode> INTRO = add(new EnumSetting<>("Intro", "6-second intro the first time you open the GUI after joining a world / server (click or any key skips it)", dev.zero.gui.IntroScreen.Mode.ONCE_PER_JOIN));
 	public static final ColorSetting ACCENT = add(new ColorSetting("Accent", "Main theme color", 0xFF8B7CFF, false));
 	public static final ColorSetting ACCENT_2 = add(new ColorSetting("Accent 2", "Second gradient color", 0xFF4FD1C5, false));
 	public static final BoolSetting CHROMA = add(new BoolSetting("Chroma", "Animated rainbow accent", false));
