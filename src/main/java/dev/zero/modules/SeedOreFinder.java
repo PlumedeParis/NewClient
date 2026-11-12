@@ -95,6 +95,14 @@ public class SeedOreFinder extends Module {
 
 	public Set<Block> wantedBlocks() { return wanted(); }
 
+	private Set<Block> lastPredict;
+
+	private Set<Block> predictSet() {
+		Set<Block> s = wanted();
+		if (dev.zero.module.ModuleManager.safeMiner != null) s.addAll(dev.zero.module.ModuleManager.safeMiner.seedRequests());
+		return s;
+	}
+
 	private Set<Block> wanted() {
 		Set<Block> s = new HashSet<>();
 		if (diamonds.get()) s.addAll(List.of(Blocks.DIAMOND_ORE, Blocks.DEEPSLATE_DIAMOND_ORE));
@@ -164,6 +172,12 @@ public class SeedOreFinder extends Module {
 		}
 		predictor.configure(s, dim.equals("the_nether"), mc.level.getMinY(), mc.level.getHeight());
 		if (!predictor.ready()) return;
+		// ores to predict = yours + the ones SafeMiner routes to; recompute if that set changes
+		Set<Block> predict = predictSet();
+		if (!predict.equals(lastPredict)) {
+			if (lastPredict != null && !predict.containsAll(lastPredict) || lastPredict != null && !lastPredict.containsAll(predict)) predictor.reset();
+			lastPredict = predict;
+		}
 		tick++;
 		if (tick % 5 == 0) refreshCache();
 
@@ -183,7 +197,7 @@ public class SeedOreFinder extends Module {
 						OrePredictor.Result res = predictor.results().get(key);
 						if (res != null && (res.realTerrain() || !loaded)) continue;
 						if (!loaded && !unloaded.get()) continue;
-						predictor.submit(mc.level, cx, cz, wanted());
+						predictor.submit(mc.level, cx, cz, predict);
 						submitted++;
 					}
 				}

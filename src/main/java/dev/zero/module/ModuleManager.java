@@ -40,6 +40,7 @@ public final class ModuleManager {
 	public static SpawnerFinder spawnerFinder;
 	public static TunnelFinder tunnelFinder;
 	public static BaseRadar baseRadar;
+	public static dev.zero.modules.SafeMiner safeMiner;
 
 	private ModuleManager() {}
 
@@ -53,6 +54,7 @@ public final class ModuleManager {
 		MODULES.add(baseFinder = new BaseFinder());
 		MODULES.add(susChunk = new SusChunk());
 		MODULES.add(seedOreFinder = new SeedOreFinder());
+		MODULES.add(safeMiner = new dev.zero.modules.SafeMiner());
 		MODULES.add(amethystFinder = new AmethystFinder());
 		MODULES.add(growthFinder = new GrowthFinder());
 		MODULES.add(rotatedDeepslate = new RotatedDeepslate());

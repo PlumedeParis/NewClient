@@ -32,6 +32,9 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 | Module | What it does |
 |---|---|
 | **SeedOreFinder** | Type the world seed and ZERØ predicts ores (diamonds, debris, emeralds, gold, iron, redstone, lapis, copper, coal, quartz). It runs Minecraft 1.21.11's **own ore generation code** locally, from the seed, against a private copy of the terrain you have loaded. Predictions are shown as **holograms** (a see-through copy of the real ore block, visible through walls) everywhere in the radius, **including chunks you have not loaded or cannot see**. An **Ore Type** option shows normal ores, deepslate ores or both. A live **seed match %** compares predictions with ores you can actually see, so you know immediately whether the seed works on that server. |
+| **SafeMiner** | Draws a mining route to the ores you choose, shaped to look like normal mining: straight 1x2 **branch tunnels on a strip-mine grid**, ores reached **from the side** of a tunnel (never by digging straight at them), staying on one Y level, avoiding lava, water and gravel. Targets come from SeedOreFinder predictions and/or real exposed ores. The HUD gives plain directions ("Dig 8 East (ahead), then left"), blocks left to dig, and a **pace monitor** that warns when you mine too fast or too many ores compared to stone. It only draws: you mine it yourself. |
+
+![SafeMiner route](docs/safe_miner.png)
 
 **Measured accuracy** (automated test against the real world generator, inner 3×3 chunks):
 
