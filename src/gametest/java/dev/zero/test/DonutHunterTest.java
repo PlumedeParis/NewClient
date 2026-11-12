@@ -31,6 +31,7 @@ public class DonutHunterTest implements FabricClientGameTest {
 			ctx.waitTicks(40);
 			ctx.runOnClient(mc -> {
 				for (var st : ModuleManager.donutHunter.getSettings()) if (st.getName().equals("Settle Time")) ((dev.zero.setting.NumberSetting) st).set(2.0);
+				ModuleManager.donutHunter.setModeForTest(false);
 				ModuleManager.donutHunter.setEnabled(true);
 			});
 			check(ctx.computeOnClient(mc -> ModuleManager.spawnerFinder.isEnabled() && ModuleManager.storageEsp.isEnabled() && ModuleManager.susChunk.isEnabled() && ModuleManager.baseRadar.isEnabled()), "turns on the finders");
@@ -54,6 +55,21 @@ public class DonutHunterTest implements FabricClientGameTest {
 			server.runCommand("tp @a 40 -39 40");
 			ctx.waitTicks(10);
 			check(ctx.computeOnClient(mc -> ModuleManager.donutHunter.alreadyChecked()), "warns: already checked here");
+
+			// Underground mode: live leads while you mine, explore hint, visiting marks a lead checked
+			ctx.runOnClient(mc -> ModuleManager.donutHunter.setModeForTest(true));
+			server.runCommand("fill 20 -55 40 30 -54 40 air");
+			server.runCommand("tp @a 20 -55 40");
+			ctx.waitTicks(60);
+			int live = ctx.computeOnClient(mc -> ModuleManager.donutHunter.leadCount());
+			check(live >= 1, "underground: live leads without any teleport verdict (" + live + ")");
+			check(!ctx.computeOnClient(mc -> ModuleManager.donutHunter.exploreHintText()).isEmpty(), "explore hint: " + ctx.computeOnClient(mc -> ModuleManager.donutHunter.exploreHintText())
+				+ ", scanned " + ctx.computeOnClient(mc -> ModuleManager.donutHunter.exploredChunks()) + " chunks");
+			ctx.takeScreenshot("donut_underground");
+			server.runCommand("tp @a 40 -55 39");
+			ctx.waitTicks(100);
+			int after = ctx.computeOnClient(mc -> ModuleManager.donutHunter.leadCount());
+			check(after < live, "standing at the lead marks it checked (" + live + " -> " + after + ")");
 
 			ctx.runOnClient(mc -> ModuleManager.donutHunter.setEnabled(false));
 			check(ctx.computeOnClient(mc -> !ModuleManager.spawnerFinder.isEnabled() && !ModuleManager.storageEsp.isEnabled() && !ModuleManager.baseRadar.isEnabled()), "turning it off restores the other modules");

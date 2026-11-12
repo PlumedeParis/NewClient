@@ -44,12 +44,17 @@ public class DonutHunter extends Module {
 	private final BoolSetting useFullbright = add(new BoolSetting("Fullbright", "See underground", false));
 	private final BoolSetting tune = add(new BoolSetting("Donut Settings", "Tune the modules for DonutSMP when turned on (no highway filter, quiet alerts, underground bases)", true));
 
-	public enum Arrival { TELEPORT, DISTANCE }
+	public enum Mode { UNDERGROUND, RTP }
+
+	private final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", "Underground = you mine around: live list of every lead + where to explore. RTP = verdict for each area you teleport to", Mode.UNDERGROUND));
 
 	private final NumberSetting leadScore = add(new NumberSetting("Lead Score", "Evidence score that counts as a lead worth checking", 40, 15, 120, 5));
-	private final NumberSetting newArea = add(new NumberSetting("New Area", "A teleport or moving this far starts a new area", 200, 64, 1000, 16, "m"));
-	private final NumberSetting settle = add(new NumberSetting("Settle Time", "Seconds with no new chunks before the area verdict", 4, 1, 20, 1, "s"));
-	private final NumberSetting rememberRadius = add(new NumberSetting("Checked Radius", "Warn when you land this close to an area you already checked", 160, 32, 1000, 16, "m"));
+	private final NumberSetting visitRadius = add(new NumberSetting("Visit Radius", "Being this close to a lead for 3 s marks it checked", 10, 4, 32, 1, "m")).visibleWhen(() -> mode.get() == Mode.UNDERGROUND);
+	private final NumberSetting shown = add(new NumberSetting("Leads Shown", "Leads listed on the HUD", 3, 1, 8, 1)).visibleWhen(() -> mode.get() == Mode.UNDERGROUND);
+	private final BoolSetting exploreHint = add(new BoolSetting("Explore Hint", "Points to the direction with the most ground you haven't scanned yet", true)).visibleWhen(() -> mode.get() == Mode.UNDERGROUND);
+	private final NumberSetting newArea = add(new NumberSetting("New Area", "A teleport or moving this far starts a new area", 200, 64, 1000, 16, "m")).visibleWhen(() -> mode.get() == Mode.RTP);
+	private final NumberSetting settle = add(new NumberSetting("Settle Time", "Seconds with no new chunks before the area verdict", 4, 1, 20, 1, "s")).visibleWhen(() -> mode.get() == Mode.RTP);
+	private final NumberSetting rememberRadius = add(new NumberSetting("Checked Radius", "Warn when you land this close to an area you already checked", 160, 32, 1000, 16, "m")).visibleWhen(() -> mode.get() == Mode.RTP);
 	private final BoolSetting beam = add(new BoolSetting("Lead Beam", "Beam on the best lead (when BaseRadar is off)", true));
 	private final BoolSetting alerts = add(new BoolSetting("Alerts", "Toast + sound with each area verdict", true));
 	private final ColorSetting leadColor = add(new ColorSetting("Lead Color", "Best lead beam", 0xFFFF4DD8, false));
@@ -144,6 +149,10 @@ public class DonutHunter extends Module {
 	@Override
 	public void onTick() {
 		tick++;
+		if (mode.get() == Mode.UNDERGROUND) {
+			undergroundTick();
+			return;
+		}
 		Vec3 pos = mc.player.position();
 		String dim = WorldUtil.dimensionName(mc.level);
 		boolean jumped = lastPos != null && pos.distanceTo(lastPos) > 48; // /rtp, /home, /warp, /tpa...
@@ -244,10 +253,118 @@ public class DonutHunter extends Module {
 		return out;
 	}
 
+	// ---------------------------------------------------------------- underground mode
+
+	private final it.unimi.dsi.fastutil.longs.LongOpenHashSet explored = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+	private final it.unimi.dsi.fastutil.longs.LongOpenHashSet announced = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+	private final it.unimi.dsi.fastutil.longs.LongOpenHashSet visited = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+	private final it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap nearTicks = new it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap();
+	private String exploredDim = "";
+	private int exploreDir = -1;
+	private int foundTotal;
+
+	/** Leads are grouped per 16 m cell, so the same base is announced once. */
+	private static long cell(BlockPos p) { return BlockPos.asLong(p.getX() >> 4, p.getY() >> 4, p.getZ() >> 4); }
+
+	private void undergroundTick() {
+		String dim = WorldUtil.dimensionName(mc.level);
+		if (!dim.equals(exploredDim)) {
+			exploredDim = dim;
+			explored.clear();
+			announced.clear();
+			visited.clear();
+		}
+		int r = mc.options.getEffectiveRenderDistance();
+		int pcx = mc.player.chunkPosition().x, pcz = mc.player.chunkPosition().z;
+		if (tick % 20 == 0)
+			for (int dx = -r; dx <= r; dx++)
+				for (int dz = -r; dz <= r; dz++)
+					if (mc.level.getChunkSource().hasChunk(pcx + dx, pcz + dz)) explored.add(net.minecraft.world.level.ChunkPos.asLong(pcx + dx, pcz + dz));
+		if (tick % 10 != 0) return;
+		List<Lead> all = collectLeads(Integer.MAX_VALUE / 4);
+		List<Lead> open = new ArrayList<>();
+		BlockPos me = mc.player.blockPosition();
+		double vr = visitRadius.get();
+		for (Lead l : all) {
+			long c = cell(l.pos);
+			if (visited.contains(c)) continue;
+			// standing near a lead for 3 s = you checked it
+			if (Math.sqrt(l.pos.distSqr(me)) <= vr) {
+				int t = nearTicks.addTo(c, 10) + 10;
+				if (t >= 60) {
+					visited.add(c);
+					Notifications.push("DonutHunter", "Lead checked \u2714", Notifications.Type.INFO);
+					continue;
+				}
+			}
+			open.add(l);
+			if (announced.add(c)) {
+				foundTotal++;
+				if (alerts.get()) {
+					Notifications.push("DonutHunter", "New lead: " + l.reason + " \u2022 " + where(l.pos), Notifications.Type.FOUND, 6000);
+					Sounds.ping();
+				}
+			}
+		}
+		// closest first, but a much stronger lead a bit further away wins
+		open.sort((a, b) -> Double.compare(rank(a, me), rank(b, me)));
+		leads = open;
+		if (tick % 40 == 0) exploreDir = exploreDirection(pcx, pcz, r);
+	}
+
+	private static double rank(Lead l, BlockPos me) {
+		return Math.sqrt(l.pos.distSqr(me)) / Math.max(1f, l.score / 40f);
+	}
+
+	private static final String[] DIRS = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+
+	/** The direction (of 8) with the most chunks you haven't loaded yet, preferring the way you're facing. */
+	private int exploreDirection(int pcx, int pcz, int r) {
+		double best = -1;
+		int bestDir = -1;
+		float yaw = mc.player.getYRot();
+		for (int d = 0; d < 8; d++) {
+			double ang = Math.toRadians(d * 45);
+			double fx = Math.sin(ang), fz = -Math.cos(ang);
+			int fresh = 0, total = 0;
+			for (int dist = r + 1; dist <= r + 10; dist++)
+				for (int side = -3; side <= 3; side++) {
+					int cx = pcx + (int) Math.round(fx * dist - fz * side), cz = pcz + (int) Math.round(fz * dist + fx * side);
+					total++;
+					if (!explored.contains(net.minecraft.world.level.ChunkPos.asLong(cx, cz))) fresh++;
+				}
+			double facing = Math.cos(Math.toRadians(d * 45) - Math.toRadians(yaw + 180));
+			double score = fresh / (double) total + 0.05 * facing;
+			if (score > best) { best = score; bestDir = d; }
+		}
+		return bestDir;
+	}
+
+	private String where(BlockPos p) {
+		Vec3 me = mc.player.position();
+		double d = Math.sqrt(p.distToCenterSqr(me));
+		int dy = p.getY() - mc.player.blockPosition().getY();
+		String v = Math.abs(dy) < 3 ? "" : dy > 0 ? " \u2191" + dy : " \u2193" + (-dy);
+		return WorldUtil.distance(d) + " " + WorldUtil.direction(me, p.getX() + 0.5, p.getZ() + 0.5) + v;
+	}
+
+	public int exploredChunks() { return explored.size(); }
+
+	public String exploreHintText() { return exploreDir < 0 ? "" : DIRS[exploreDir]; }
+
+	public void markVisitedForTest(BlockPos p) { visited.add(cell(p)); }
+
 	// ---------------------------------------------------------------- render
 
 	@Override
 	public void onRender3D(float pt) {
+		if (mode.get() == Mode.UNDERGROUND && beam.get()) {
+			for (int i = 0; i < Math.min(leads.size(), shown.getInt()); i++) {
+				Lead l = leads.get(i);
+				Render3D.waypoint(Vec3.atCenterOf(l.pos), i == 0 ? leadColor.get() : dev.zero.util.ColorUtil.withAlpha(leadColor.get(), 150), "#" + (i + 1) + " " + l.reason);
+			}
+			return;
+		}
 		if (!beam.get() || leads.isEmpty() || ModuleManager.baseRadar.isEnabled()) return;
 		Lead l = leads.get(0);
 		Render3D.waypoint(Vec3.atCenterOf(l.pos), leadColor.get(), l.reason);
@@ -274,26 +391,47 @@ public class DonutHunter extends Module {
 
 	@Override
 	public String getInfo() {
+		if (mode.get() == Mode.UNDERGROUND) return leads.isEmpty() ? null : String.valueOf(leads.size());
 		return area == null ? null : area.settled ? (leads.isEmpty() ? "empty" : leads.size() + "") : "...";
 	}
 
 	@Override
 	public void onRender2D(GuiGraphics g, float pt) {
-		if (!hud.get() || area == null) return;
+		if (!hud.get()) return;
 		List<String> lines = new ArrayList<>();
+		if (mode.get() == Mode.UNDERGROUND) {
+			lines.add("Donut Hunter \u00A77\u2022 underground");
+			if (leads.isEmpty()) lines.add("\u00A77No leads in range \u2014 keep mining");
+			for (int i = 0; i < Math.min(leads.size(), shown.getInt()); i++) {
+				Lead l = leads.get(i);
+				lines.add((i == 0 ? "\u00A7a#1 " : "\u00A7f#" + (i + 1) + " ") + "\u00A7f" + Render2D.trim(l.reason, 150) + " \u00A77" + where(l.pos));
+			}
+			if (leads.size() > shown.getInt()) lines.add("\u00A78+" + (leads.size() - shown.getInt()) + " more");
+			if (exploreHint.get() && exploreDir >= 0) lines.add("\u00A77Explore \u00A7b" + DIRS[exploreDir] + "\u00A77 (new ground)");
+			lines.add("\u00A78Scanned " + explored.size() + " chunks \u2022 " + foundTotal + " leads found \u2022 " + visited.size() + " checked");
+			drawPanel(g, lines, leads.isEmpty() ? 0xFF6B7280 : leadColor.get());
+			return;
+		}
+		if (area == null) return;
 		lines.add("Donut Hunter");
 		lines.add(verdictText());
 		if (!leads.isEmpty()) lines.add("§7" + Render2D.trim(leads.get(0).reason, 200));
 		if (area.repeatOf != null) lines.add("§e⚠ Already checked here");
 		long avg = areasChecked == 0 ? 0 : totalAreaMs / Math.max(1, checked.size()) / 1000;
 		lines.add("§8Areas " + areasChecked + " • with leads " + leadAreas + (avg > 0 ? " • ~" + avg + "s/area" : ""));
+		drawPanel(g, lines, leads.isEmpty() ? 0xFF6B7280 : leadColor.get());
+	}
+
+	private void drawPanel(GuiGraphics g, List<String> lines, int bar) {
 		int w = 0;
 		for (String l : lines) w = Math.max(w, Render2D.width(l));
 		w += 14;
 		int h = lines.size() * 10 + 6;
 		int[] p = Hud.slot("Donut hunter", w, h);
 		Render2D.roundedRect(g, p[0], p[1], w, h, 5, 0xC8101016);
-		Render2D.rect(g, p[0], p[1] + 4, 2, h - 8, leads.isEmpty() ? 0xFF6B7280 : leadColor.get());
+		Render2D.rect(g, p[0], p[1] + 4, 2, h - 8, bar);
 		for (int i = 0; i < lines.size(); i++) Render2D.text(g, lines.get(i), p[0] + 7, p[1] + 4 + i * 10, i == 0 ? 0xFFFFFFFF : 0xFFB4B4C8, false);
 	}
+
+	public void setModeForTest(boolean underground) { mode.set(underground ? Mode.UNDERGROUND : Mode.RTP); }
 }
