@@ -19,6 +19,7 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 |---|---|---|
 | **BlockESP** | Render | Highlights chosen blocks through walls: per-block colors, box/outline/fill, tracers, labels. Searchable block picker with presets. **Exposed Only** mode ignores anti-xray fake ores. |
 | **StorageESP** | Render | Chests (double chests merged), trapped chests, ender chests, shulkers in their dye color, barrels, hoppers, furnaces, dispensers, brewing stands, chest minecarts / chest boats. Per-type colors, tracers and per-chunk "N storage" counts. |
+| **Fullbright** | Render | See in the dark: raises your local lightmap like night vision (Strength setting). No potion effect, nothing sent. |
 | **XRay** | Render | Hides everything except your chosen blocks, with fullbright. Works with Fabric API's renderer. See the anti-xray note below. |
 | **SpawnerESP** | Render | Every mob spawner and trial spawner through walls, colored by mob type (zombie, skeleton, blaze, pig...), with labels, tracers and an optional 16-block activation-range box. |
 | **Crosshair** | Render | Custom pixel crosshair with an editor: paint on a 15x15 grid (left paint / right erase), mirror X/Y, 7 presets, color swatches, outline, scale, target color and attack-cooldown bar. Live preview on light and dark backgrounds. |
@@ -53,7 +54,7 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 | Module | Technique |
 |---|---|
 | **BaseFinder** | Player-made blocks / stashes, natural structures filtered out. |
-| **SusChunk** | Hidden activity: dug tunnels, buried storage, lights, portals, farms, chunk age. |
+| **SusChunk** | Finds **hidden bases**, not noise. In **Bases** mode (default) a chunk is only flagged with real base evidence buried under natural ground: several chests/barrels, shulkers, ender chests, crafting tables, furnaces, anvils, beds, enchanting, redstone (scored by how many *different* kinds), lit underground farms. Single chests (dungeons, shipwrecks, buried treasure) and anything in or next to a natural structure (villages, dungeons, mineshafts, strongholds, ancient cities, trial chambers, bastions, fortresses...) are ignored. **Activity** mode also shows tunnels, torches and portals on their own. Also: chunk age overlay. |
 | **AmethystFinder** | Buds are grouped into whole geodes (across chunk borders). Generation gives ~25% fully grown clusters; buds only grow while a player keeps the chunk loaded. Only geodes where almost everything is fully grown (default 80%+) are highlighted, with the odds of that happening naturally (e.g. "1 in 2M"). Natural geodes are ignored. |
 | **GrowthFinder** | Kelp tops generate at age 20–23; age 24–25 is only reachable by growing in a loaded chunk, which is hard proof of long loading. |
 | **RotatedDeepslate** | Natural deepslate is always upright (axis Y). Sideways deepslate (axis X/Z) was placed by a player, typically patching a tunnel or a base entrance. Also flags cobbled deepslate (outside ancient cities). |

@@ -11,6 +11,7 @@
 		"KeyboardInputMixin",
 		"LevelRendererMixin",
 		"LightMixin",
+		"LightTextureMixin",
 		"MinecraftMixin",
 		"RenderTypeAccessor",
 		"SectionCompilerMixin",

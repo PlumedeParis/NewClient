@@ -41,6 +41,7 @@ public final class ModuleManager {
 	public static TunnelFinder tunnelFinder;
 	public static BaseRadar baseRadar;
 	public static dev.zero.modules.SafeMiner safeMiner;
+	public static dev.zero.modules.Fullbright fullbright;
 
 	private ModuleManager() {}
 
@@ -48,6 +49,7 @@ public final class ModuleManager {
 		MODULES.add(blockEsp = new BlockESP());
 		MODULES.add(storageEsp = new StorageESP());
 		MODULES.add(xray = new XRay());
+		MODULES.add(fullbright = new dev.zero.modules.Fullbright());
 		MODULES.add(spawnerEsp = new SpawnerESP());
 		MODULES.add(crosshair = new Crosshair());
 		MODULES.add(freecam = new Freecam());

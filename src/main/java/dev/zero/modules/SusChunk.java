@@ -25,6 +25,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.tags.BlockTags;
+import java.util.HashSet;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
@@ -58,14 +60,19 @@ import java.util.Set;
 public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	public enum AgeOverlay { OFF, NEW, OLD, BOTH }
 
-	private final NumberSetting minScore = add(new NumberSetting("Min Score", "Score needed to highlight a chunk", 8, 2, 100, 1)).onChange(this::rescan);
-	private final NumberSetting alertScore = add(new NumberSetting("Alert Score", "Score that triggers an alert", 30, 5, 200, 1));
-	private final BoolSetting tunnels = add(new BoolSetting("Tunnels", "Straight dug corridors with flat floor and ceiling", true)).onChange(this::rescan);
-	private final NumberSetting tunnelLength = add(new NumberSetting("Tunnel Length", "Min straight length to count as dug", 13, 8, 16, 1)).visibleWhen(tunnels::get).onChange(this::rescan);
-	private final BoolSetting storage = add(new BoolSetting("Buried Storage", "Chests / shulkers hidden underground", true)).onChange(this::rescan);
+	public enum Mode { BASES, ACTIVITY }
+
+	private final EnumSetting<Mode> mode = add(new EnumSetting<>("Mode", "Bases = only chunks with real base evidence (storage, crafting / furnaces, beds, farms...). Activity = also tunnels, torches and portals on their own", Mode.BASES)).onChange(this::rescan);
+	private final NumberSetting minScore = add(new NumberSetting("Min Score", "Score needed to highlight a chunk", 20, 5, 150, 1)).onChange(this::rescan);
+	private final NumberSetting alertScore = add(new NumberSetting("Alert Score", "Score that triggers an alert", 45, 10, 300, 1));
+	private final BoolSetting undergroundOnly = add(new BoolSetting("Underground Only", "Only count things buried under natural ground (hidden bases). Off = also surface builds (can flag villages)", true)).onChange(this::rescan);
+	private final BoolSetting storage = add(new BoolSetting("Storage", "Several chests / barrels together, shulkers, ender chests", true)).onChange(this::rescan);
+	private final BoolSetting workshop = add(new BoolSetting("Base Blocks", "Crafting tables, furnaces, anvils, enchanting, beds, redstone...", true)).onChange(this::rescan);
+	private final BoolSetting farms = add(new BoolSetting("Farms", "Fully grown crops underground (lit farms)", true)).onChange(this::rescan);
+	private final BoolSetting tunnels = add(new BoolSetting("Tunnels", "Straight 1x2 dug tunnels underground", true)).onChange(this::rescan);
+	private final NumberSetting tunnelLength = add(new NumberSetting("Tunnel Length", "Min straight length to count as dug", 12, 8, 16, 1)).visibleWhen(tunnels::get).onChange(this::rescan);
 	private final BoolSetting lights = add(new BoolSetting("Lights", "Torches and lanterns underground", true)).onChange(this::rescan);
 	private final BoolSetting portals = add(new BoolSetting("Portals", "Lit nether portals", true)).onChange(this::rescan);
-	private final BoolSetting farms = add(new BoolSetting("Farms", "Fully grown crops and nether wart", true)).onChange(this::rescan);
 	private final BoolSetting outOfPlace = add(new BoolSetting("Out Of Place", "Rails in the Nether, overworld blocks in the Nether...", true)).onChange(this::rescan);
 	private final BoolSetting ignoreHighways = add(new BoolSetting("Ignore Highways", "Ignore chunks on the main axis / diagonal highways", true)).onChange(this::rescan);
 	private final NumberSetting highwayWidth = add(new NumberSetting("Highway Width", "Half-width of the ignored highway band", 24, 4, 128, 4, "m")).visibleWhen(ignoreHighways::get).onChange(this::rescan);
@@ -83,47 +90,64 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	private enum Age { UNKNOWN, OLD, NEW }
 
 	private static final class Result {
-		float score;
+		float score, base, activity;
 		final Object2FloatLinkedOpenHashMap<String> reasons = new Object2FloatLinkedOpenHashMap<>();
 		int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
 		BlockPos focus;
 		boolean alerted;
 
-		void add(String reason, float points, int y) {
+		void base(String reason, float points, BlockPos at) { add(reason, points, at); base += points; }
+
+		void activity(String reason, float points, BlockPos at) { add(reason, points, at); activity += points; }
+
+		private void add(String reason, float points, BlockPos at) {
 			if (points <= 0) return;
-			score += points;
 			reasons.addTo(reason, points);
-			minY = Math.min(minY, y);
-			maxY = Math.max(maxY, y);
+			if (at != null) {
+				minY = Math.min(minY, at.getY());
+				maxY = Math.max(maxY, at.getY());
+				if (focus == null) focus = at;
+			}
 		}
 	}
 
 	private static final Set<Block> LIGHTS = Set.of(Blocks.TORCH, Blocks.WALL_TORCH, Blocks.SOUL_TORCH, Blocks.SOUL_WALL_TORCH,
 		Blocks.LANTERN, Blocks.SOUL_LANTERN, Blocks.REDSTONE_TORCH, Blocks.REDSTONE_WALL_TORCH, Blocks.JACK_O_LANTERN,
-		Blocks.SEA_LANTERN, Blocks.GLOWSTONE, Blocks.SHROOMLIGHT, Blocks.END_ROD, Blocks.COPPER_TORCH, Blocks.COPPER_WALL_TORCH);
+		Blocks.GLOWSTONE, Blocks.SHROOMLIGHT, Blocks.END_ROD, Blocks.COPPER_TORCH, Blocks.COPPER_WALL_TORCH);
 	private static final Set<Block> RAILS = Set.of(Blocks.RAIL, Blocks.POWERED_RAIL, Blocks.DETECTOR_RAIL, Blocks.ACTIVATOR_RAIL);
 	private static final Set<Block> OVERWORLD_ONLY = Set.of(Blocks.COBBLESTONE, Blocks.STONE, Blocks.STONE_BRICKS, Blocks.OAK_PLANKS,
 		Blocks.SPRUCE_PLANKS, Blocks.DIRT, Blocks.GRASS_BLOCK, Blocks.GLASS, Blocks.SMOOTH_STONE, Blocks.DEEPSLATE, Blocks.COBBLED_DEEPSLATE);
 	private static final Set<Block> NEW_NETHER = Set.of(Blocks.BLACKSTONE, Blocks.BASALT, Blocks.SOUL_SOIL, Blocks.CRIMSON_NYLIUM,
 		Blocks.WARPED_NYLIUM, Blocks.NETHER_GOLD_ORE, Blocks.ANCIENT_DEBRIS, Blocks.CRIMSON_STEM, Blocks.WARPED_STEM);
+	/** Blocks that only generate inside natural structures: everything around them is ignored (this chunk and its neighbours). */
 	private static final Set<Block> STRUCTURE = Set.of(Blocks.BELL, Blocks.END_PORTAL_FRAME, Blocks.REINFORCED_DEEPSLATE, Blocks.SCULK_SHRIEKER,
 		Blocks.GILDED_BLACKSTONE, Blocks.NETHER_BRICKS, Blocks.COBWEB, Blocks.VAULT, Blocks.TRIAL_SPAWNER, Blocks.PRISMARINE_BRICKS,
-		Blocks.DARK_PRISMARINE, Blocks.CHISELED_SANDSTONE, Blocks.MOSSY_COBBLESTONE, Blocks.SPAWNER, Blocks.CHISELED_STONE_BRICKS, Blocks.PURPUR_BLOCK);
+		Blocks.DARK_PRISMARINE, Blocks.CHISELED_SANDSTONE, Blocks.MOSSY_COBBLESTONE, Blocks.SPAWNER, Blocks.CHISELED_STONE_BRICKS, Blocks.PURPUR_BLOCK,
+		Blocks.INFESTED_STONE_BRICKS, Blocks.INFESTED_MOSSY_STONE_BRICKS, Blocks.INFESTED_CRACKED_STONE_BRICKS, Blocks.CHISELED_TUFF,
+		Blocks.CHISELED_TUFF_BRICKS, Blocks.SUSPICIOUS_SAND, Blocks.SUSPICIOUS_GRAVEL, Blocks.CRYING_OBSIDIAN, Blocks.DARK_OAK_FENCE,
+		Blocks.TRIPWIRE_HOOK, Blocks.SCULK_CATALYST, Blocks.POLISHED_BLACKSTONE_BRICKS, Blocks.CRACKED_DEEPSLATE_TILES,
+		Blocks.CRACKED_DEEPSLATE_BRICKS, Blocks.TUFF_BRICKS, Blocks.POLISHED_TUFF, Blocks.CRACKED_STONE_BRICKS, Blocks.MOSSY_STONE_BRICKS);
+	/** Blocks a player places in a base (never in caves, rarely in structures, and structures are excluded anyway). */
+	private static final Set<Block> WORKSHOP = Set.of(Blocks.CRAFTING_TABLE, Blocks.FURNACE, Blocks.BLAST_FURNACE, Blocks.SMOKER, Blocks.ANVIL,
+		Blocks.CHIPPED_ANVIL, Blocks.DAMAGED_ANVIL, Blocks.ENCHANTING_TABLE, Blocks.BREWING_STAND, Blocks.BEACON, Blocks.RESPAWN_ANCHOR,
+		Blocks.LODESTONE, Blocks.SMITHING_TABLE, Blocks.GRINDSTONE, Blocks.STONECUTTER, Blocks.LOOM, Blocks.CARTOGRAPHY_TABLE,
+		Blocks.FLETCHING_TABLE, Blocks.HOPPER, Blocks.OBSERVER, Blocks.PISTON, Blocks.STICKY_PISTON, Blocks.REPEATER, Blocks.COMPARATOR,
+		Blocks.REDSTONE_WIRE, Blocks.NOTE_BLOCK, Blocks.JUKEBOX, Blocks.CRAFTER, Blocks.DROPPER, Blocks.DISPENSER, Blocks.DAYLIGHT_DETECTOR,
+		Blocks.TARGET, Blocks.SLIME_BLOCK, Blocks.HONEY_BLOCK, Blocks.COMPOSTER, Blocks.SCAFFOLDING);
 
 	private final Long2ObjectOpenHashMap<Result> results = new Long2ObjectOpenHashMap<>();
 	private final Long2ObjectOpenHashMap<Age> ages = new Long2ObjectOpenHashMap<>();
+	private final LongOpenHashSet structures = new LongOpenHashSet();
 	private final LongOpenHashSet dirty = new LongOpenHashSet();
 	private int tickCounter;
 
 	public SusChunk() {
-		super("SusChunk", "Flags chunks with hidden player activity", Category.HUNT);
+		super("SusChunk", "Flags chunks with hidden player bases", Category.HUNT);
 	}
 
 	@Override
 	public String getInfo() {
-		int n = 0;
-		for (Result r : results.values()) if (r.score >= minScore.get()) n++;
-		return n > 0 ? String.valueOf(n) : null;
+		return results.isEmpty() ? null : String.valueOf(results.size());
 	}
 
 	private boolean onHighway(ChunkPos pos) {
@@ -133,24 +157,43 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		return x < w || z < w || Math.abs(x - z) < w;
 	}
 
+	private boolean nearStructure(ChunkPos p) {
+		for (int dx = -1; dx <= 1; dx++)
+			for (int dz = -1; dz <= 1; dz++)
+				if (structures.contains(ChunkPos.asLong(p.x + dx, p.z + dz))) return true;
+		return false;
+	}
+
+	/** Natural terrain: what "buried" is measured against (houses, trees and water don't count). */
+	private static boolean terrain(BlockState st) {
+		return st.is(BlockTags.BASE_STONE_OVERWORLD) || st.is(BlockTags.DIRT) || st.is(BlockTags.SAND) || st.is(BlockTags.TERRACOTTA)
+			|| st.is(Blocks.GRAVEL) || st.is(Blocks.SANDSTONE) || st.is(Blocks.RED_SANDSTONE) || st.is(Blocks.CLAY) || st.is(Blocks.SNOW_BLOCK)
+			|| st.is(BlockTags.BASE_STONE_NETHER) || st.is(BlockTags.NYLIUM) || st.is(Blocks.SOUL_SOIL) || st.is(Blocks.SOUL_SAND)
+			|| st.is(BlockTags.COAL_ORES) || st.is(BlockTags.IRON_ORES) || st.is(BlockTags.COPPER_ORES) || st.is(Blocks.CALCITE)
+			|| st.is(Blocks.PACKED_ICE) || st.is(Blocks.MUD) || st.is(Blocks.END_STONE);
+	}
+
 	@Override
 	public void scanChunk(LevelChunk chunk) {
-		long key = chunk.getPos().toLong();
+		ChunkPos cp = chunk.getPos();
+		long key = cp.toLong();
 		String dim = WorldUtil.dimensionName(mc.level);
-		boolean nether = dim.equals("the_nether"), overworld = dim.equals("overworld");
+		boolean nether = dim.equals("the_nether"), overworld = dim.equals("overworld"), end = dim.equals("the_end");
 
 		LevelChunkSection[] sections = chunk.getSections();
 		int minY = chunk.getMinY();
 		int height = sections.length * 16;
-		int bx = chunk.getPos().getMinBlockX(), bz = chunk.getPos().getMinBlockZ();
+		int bx = cp.getMinBlockX(), bz = cp.getMinBlockZ();
 
 		// 0 = open (air / no collision), 1 = solid, 2 = fluid
 		byte[] cells = tunnels.get() ? new byte[height * 256] : null;
+		int[] ground = new int[256];
+		java.util.Arrays.fill(ground, Integer.MIN_VALUE);
 		Reference2IntOpenHashMap<Block> counts = new Reference2IntOpenHashMap<>();
-		Result r = new Result();
 		List<BlockPos> lightPositions = new ArrayList<>();
-		int grownCrops = 0, cropY = 0;
-		boolean deepslateNearZero = false, copper = false, newNether = false;
+		List<BlockPos> workshopPositions = new ArrayList<>();
+		List<BlockPos> crops = new ArrayList<>();
+		boolean deepslateNearZero = false, copper = false, newNether = false, structureHere = false;
 
 		for (int i = 0; i < sections.length; i++) {
 			LevelChunkSection s = sections[i];
@@ -169,20 +212,23 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 							cells[((wy - minY) << 8) | (z << 4) | x] = c;
 						}
 						if (st.isAir()) continue;
+						if (terrain(st)) ground[(z << 4) | x] = wy;
 						Block b = st.getBlock();
-						if (STRUCTURE.contains(b)) counts.addTo(b, 1);
+						if (STRUCTURE.contains(b)) {
+							structureHere = true;
+							counts.addTo(b, 1);
+						}
 						if (LIGHTS.contains(b)) {
-							counts.addTo(Blocks.TORCH, 1);
-							if (lightPositions.size() < 64) lightPositions.add(new BlockPos(bx + x, wy, bz + z));
+							boolean natural = nether && (b == Blocks.GLOWSTONE || b == Blocks.SHROOMLIGHT) || end && b == Blocks.END_ROD;
+							if (!natural && lightPositions.size() < 64) lightPositions.add(new BlockPos(bx + x, wy, bz + z));
 						} else if (RAILS.contains(b)) counts.addTo(Blocks.RAIL, 1);
 						else if (b == Blocks.NETHER_PORTAL) counts.addTo(b, 1);
 						else if (b == Blocks.OAK_FENCE) counts.addTo(b, 1);
-						else if (b instanceof CropBlock crop && crop.isMaxAge(st)) {
-							grownCrops++;
-							cropY = wy;
-						} else if (b instanceof NetherWartBlock && st.getValue(NetherWartBlock.AGE) == 3 && overworld) {
-							grownCrops++;
-							cropY = wy;
+						else if (WORKSHOP.contains(b) || st.is(BlockTags.BEDS)) {
+							if (workshopPositions.size() < 256) workshopPositions.add(new BlockPos(bx + x, wy, bz + z));
+							counts.addTo(st.is(BlockTags.BEDS) ? Blocks.RED_BED : b, 0);
+						} else if (b instanceof CropBlock crop && crop.isMaxAge(st) || b instanceof NetherWartBlock && st.getValue(NetherWartBlock.AGE) == 3 && overworld) {
+							if (crops.size() < 128) crops.add(new BlockPos(bx + x, wy, bz + z));
 						}
 						if (nether) {
 							if (OVERWORLD_ONLY.contains(b)) counts.addTo(Blocks.COBBLESTONE, 1);
@@ -200,94 +246,112 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		else if (nether) age = newNether ? Age.NEW : Age.OLD;
 		ages.put(key, age);
 
-		if (onHighway(chunk.getPos())) {
+		// a structure here also clears the neighbours (structures cross chunk borders)
+		boolean wasStructure = structures.contains(key);
+		if (structureHere) structures.add(key); else structures.remove(key);
+		if (structureHere != wasStructure)
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (dx != 0 || dz != 0) dirty.add(ChunkPos.asLong(cp.x + dx, cp.z + dz));
+
+		if (onHighway(cp)) {
 			results.remove(key);
 			return;
 		}
-
-		boolean village = counts.containsKey(Blocks.BELL);
-		boolean stronghold = counts.containsKey(Blocks.END_PORTAL_FRAME) || counts.containsKey(Blocks.CHISELED_STONE_BRICKS);
-		boolean ancient = counts.containsKey(Blocks.REINFORCED_DEEPSLATE) || counts.containsKey(Blocks.SCULK_SHRIEKER);
+		boolean structure = nearStructure(cp);
 		boolean mineshaft = counts.containsKey(Blocks.COBWEB) || (counts.containsKey(Blocks.RAIL) && counts.containsKey(Blocks.OAK_FENCE) && overworld);
-		boolean fortress = counts.containsKey(Blocks.NETHER_BRICKS);
-		boolean bastion = counts.containsKey(Blocks.GILDED_BLACKSTONE);
-		boolean trial = counts.containsKey(Blocks.VAULT) || counts.containsKey(Blocks.TRIAL_SPAWNER);
-		boolean monument = counts.containsKey(Blocks.PRISMARINE_BRICKS) || counts.containsKey(Blocks.DARK_PRISMARINE);
-		boolean temple = counts.containsKey(Blocks.CHISELED_SANDSTONE) || counts.containsKey(Blocks.MOSSY_COBBLESTONE) || counts.containsKey(Blocks.SPAWNER);
-		boolean endCity = counts.containsKey(Blocks.PURPUR_BLOCK);
-		boolean structure = village || stronghold || ancient || mineshaft || fortress || bastion || trial || monument || temple || endCity;
+		boolean under = undergroundOnly.get();
+		Result r = new Result();
+
+		// ---- Storage ----
+		if (storage.get()) {
+			int containers = 0, shulkers = 0, enders = 0;
+			BlockPos at = null;
+			for (BlockEntity be : chunk.getBlockEntities().values()) {
+				BlockPos p = be.getBlockPos();
+				if (be instanceof ShulkerBoxBlockEntity) { shulkers++; at = p; continue; } // never natural
+				if (be instanceof EnderChestBlockEntity && !end) { enders++; at = p; continue; }
+				if (!(be instanceof ChestBlockEntity || be instanceof BarrelBlockEntity)) continue;
+				if (structure || under && !buried(p, ground, nether, end)) continue;
+				containers++;
+				if (at == null) at = p;
+			}
+			if (shulkers > 0) r.base(shulkers + " shulker" + (shulkers > 1 ? "s" : ""), Math.min(shulkers, 4) * 25f, at);
+			if (enders > 0) r.base("Ender chest", Math.min(enders, 3) * 15f, at);
+			// a single chest is natural all the time (dungeons, shipwrecks, buried treasure, ruined portals...)
+			if (containers >= 2) r.base(containers + " storage", Math.min(containers, 16) * 5f, at);
+			else if (containers == 1) r.activity("1 chest", 3, at);
+		}
+
+		// ---- Base blocks (crafting, furnaces, beds, redstone...) ----
+		if (workshop.get() && !structure) {
+			Set<Block> kinds = new HashSet<>();
+			int n = 0;
+			BlockPos at = null;
+			for (BlockPos p : workshopPositions) {
+				if (under && !buried(p, ground, nether, end)) continue;
+				BlockState st = chunk.getBlockState(p);
+				kinds.add(st.is(BlockTags.BEDS) ? Blocks.RED_BED : st.getBlock());
+				n++;
+				if (at == null) at = p;
+			}
+			if (n > 0) r.base(kinds.size() > 1 ? kinds.size() + " kinds of base blocks" : kinds.iterator().next().getName().getString(), Math.min(kinds.size(), 6) * 6f + Math.min(n, 20) * 0.5f, at);
+		}
+
+		// ---- Farms (grown crops; underground = lit farm) ----
+		if (farms.get() && !structure && !crops.isEmpty()) {
+			int buriedCrops = 0;
+			for (BlockPos p : crops) if (buried(p, ground, nether, end)) buriedCrops++;
+			if (buriedCrops > 0) r.base("Underground farm", Math.min(buriedCrops, 25) * 0.8f, crops.get(0));
+			else if (!under) r.activity("Grown crops", Math.min(crops.size(), 30) * 0.3f, crops.get(0));
+		}
 
 		// ---- Tunnels ----
-		if (cells != null && !(ancient || mineshaft || fortress || trial || monument || stronghold)) {
-			int rows = countTunnelRows(cells, height, nether, minY, bx, bz, r);
-			if (rows > 0) r.add("Tunnel", Math.min(rows, 6) * 8f, r.minY);
+		if (cells != null && !structure && !mineshaft) {
+			int rows = countTunnelRows(cells, height, nether, minY, bx, bz, ground, r);
+			if (rows > 0) r.activity("Dug tunnel", Math.min(rows, 6) * 5f, null);
 		}
 
 		// ---- Lights underground ----
-		if (lights.get() && !(village || stronghold || ancient || trial || endCity || bastion)) {
-			int under = 0;
-			for (BlockPos p : lightPositions) {
-				int surface = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, p.getX() & 15, p.getZ() & 15);
-				if (nether || p.getY() < surface - 6) {
-					under++;
-					if (r.focus == null) r.focus = p;
-					r.minY = Math.min(r.minY, p.getY());
-					r.maxY = Math.max(r.maxY, p.getY());
-				}
-			}
-			if (under > 0) r.add("Lights", Math.min(under, 10) * 2f, r.minY);
+		if (lights.get() && !structure && !mineshaft) {
+			int n = 0;
+			BlockPos at = null;
+			for (BlockPos p : lightPositions) if (buried(p, ground, nether, end)) { n++; if (at == null) at = p; }
+			if (n > 0) r.activity(n + " lights", Math.min(n, 10) * 1.5f, at);
 		}
 
 		// ---- Portals ----
-		if (portals.get() && counts.containsKey(Blocks.NETHER_PORTAL)) {
-			BlockPos any = firstOf(chunk, Blocks.NETHER_PORTAL);
-			r.add("Portal", 8, any != null ? any.getY() : 64);
-			if (r.focus == null) r.focus = any;
-		}
+		if (portals.get() && counts.containsKey(Blocks.NETHER_PORTAL)) r.activity("Lit portal", 10, firstOf(chunk, Blocks.NETHER_PORTAL));
 
 		// ---- Rails / out of place blocks ----
-		if (outOfPlace.get()) {
-			if (counts.containsKey(Blocks.RAIL) && !mineshaft && !overworld) r.add("Rails", Math.min(counts.getInt(Blocks.RAIL), 12), 64);
-			if (nether && counts.containsKey(Blocks.COBBLESTONE) && !fortress && !bastion)
-				r.add("Overworld blocks", Math.min(counts.getInt(Blocks.COBBLESTONE), 40) * 0.25f, 64);
+		if (outOfPlace.get() && nether && !structure) {
+			if (counts.containsKey(Blocks.RAIL)) r.activity("Rails", Math.min(counts.getInt(Blocks.RAIL), 12), null);
+			if (counts.containsKey(Blocks.COBBLESTONE)) r.activity("Overworld blocks", Math.min(counts.getInt(Blocks.COBBLESTONE), 40) * 0.25f, null);
 		}
 
-		// ---- Farms ----
-		if (farms.get() && !village && grownCrops > 0) r.add("Grown crops", Math.min(grownCrops, 30) * 0.4f, cropY);
-
-		// ---- Buried storage ----
-		if (storage.get() && !(bastion || fortress || ancient || trial || temple || endCity || mineshaft || stronghold)) {
-			int buried = 0;
-			for (BlockEntity be : chunk.getBlockEntities().values()) {
-				if (!(be instanceof ChestBlockEntity || be instanceof BarrelBlockEntity || be instanceof ShulkerBoxBlockEntity || be instanceof EnderChestBlockEntity)) continue;
-				if (village && !(be instanceof ShulkerBoxBlockEntity || be instanceof EnderChestBlockEntity)) continue;
-				BlockPos p = be.getBlockPos();
-				int surface = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, p.getX() & 15, p.getZ() & 15);
-				boolean hidden = nether || p.getY() < surface - 5 || be instanceof ShulkerBoxBlockEntity;
-				if (!hidden) continue;
-				buried++;
-				r.focus = p;
-				r.minY = Math.min(r.minY, p.getY());
-				r.maxY = Math.max(r.maxY, p.getY());
-			}
-			if (buried > 0) r.add("Buried storage", Math.min(buried, 10) * 5f, r.minY);
-		}
-
-		if (structure && r.score < minScore.get() * 2) r.score *= 0.75f; // be conservative near structures
+		// Bases mode: activity alone (tunnels, torches...) is everywhere on old servers; only real base evidence flags a chunk.
+		if (mode.get() == Mode.BASES) r.score = r.base >= 12 ? r.base + r.activity * 0.5f : 0;
+		else r.score = r.base + r.activity;
 
 		if (r.score < minScore.get()) {
 			results.remove(key);
 			return;
 		}
-		if (r.focus == null) r.focus = new BlockPos(chunk.getPos().getMiddleBlockX(), r.minY == Integer.MAX_VALUE ? 64 : r.minY, chunk.getPos().getMiddleBlockZ());
+		if (r.focus == null) r.focus = new BlockPos(cp.getMiddleBlockX(), r.minY == Integer.MAX_VALUE ? 64 : r.minY, cp.getMiddleBlockZ());
 		Result old = results.get(key);
 		if (old != null) r.alerted = old.alerted;
 		results.put(key, r);
-		maybeAlert(chunk.getPos(), r);
+		maybeAlert(cp, r);
 	}
 
-	/** Counts rows (along X and Z) containing a straight 2-3 high corridor with flat floor and ceiling. */
-	private int countTunnelRows(byte[] cells, int height, boolean nether, int minY, int bx, int bz, Result r) {
+	/** Under at least 4 blocks of natural ground (the whole Nether below the roof counts). */
+	private static boolean buried(BlockPos p, int[] ground, boolean nether, boolean end) {
+		if (nether) return p.getY() < 123;
+		if (end) return false;
+		int g = ground[((p.getZ() & 15) << 4) | (p.getX() & 15)];
+		return g != Integer.MIN_VALUE && p.getY() < g - 3;
+	}
+
+	/** Rows (along X and Z) containing a straight 1-wide, 2-high corridor with walls, floor and ceiling, under natural ground. */
+	private int countTunnelRows(byte[] cells, int height, boolean nether, int minY, int bx, int bz, int[] ground, Result r) {
 		int need = tunnelLength.getInt();
 		int rows = 0;
 		int maxLocalY = height - 4;
@@ -300,7 +364,9 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 						int x = axis == 0 ? b : a, z = axis == 0 ? a : b;
 						int col = (z << 4) | x;
 						boolean ok = cells[(ly << 8) | col] == 0 && cells[((ly + 1) << 8) | col] == 0 && cells[((ly - 1) << 8) | col] == 1
-							&& (cells[((ly + 2) << 8) | col] == 1 || (cells[((ly + 2) << 8) | col] == 0 && cells[((ly + 3) << 8) | col] == 1));
+							&& cells[((ly + 2) << 8) | col] == 1
+							&& wall(cells, ly, axis == 0 ? x : x - 1, axis == 0 ? z - 1 : z) && wall(cells, ly, axis == 0 ? x : x + 1, axis == 0 ? z + 1 : z)
+							&& (nether || ground[col] != Integer.MIN_VALUE && ly + minY < ground[col] - 3);
 						run = ok ? run + 1 : 0;
 						best = Math.max(best, run);
 					}
@@ -310,12 +376,18 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 						r.minY = Math.min(r.minY, wy);
 						r.maxY = Math.max(r.maxY, wy + 2);
 						if (r.focus == null) r.focus = new BlockPos(bx + (axis == 0 ? 8 : a), wy, bz + (axis == 0 ? a : 8));
-						a++; // a 2-3 wide tunnel should not count 3 times
 					}
 				}
 			}
 		}
 		return rows;
+	}
+
+	/** Solid at feet and head height (outside the chunk counts as a wall). */
+	private static boolean wall(byte[] cells, int ly, int x, int z) {
+		if (x < 0 || x > 15 || z < 0 || z > 15) return true;
+		int col = (z << 4) | x;
+		return cells[(ly << 8) | col] == 1 && cells[((ly + 1) << 8) | col] == 1;
 	}
 
 	private BlockPos firstOf(LevelChunk chunk, Block block) {
@@ -382,12 +454,14 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	public void onChunkUnload(ChunkPos pos) {
 		results.remove(pos.toLong());
 		ages.remove(pos.toLong());
+		structures.remove(pos.toLong());
 	}
 
 	@Override
 	public void clearAll() {
 		results.clear();
 		ages.clear();
+		structures.clear();
 		dirty.clear();
 	}
 
@@ -407,7 +481,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 			if (labels.get()) {
 				Vec3 lp = new Vec3(cp.getMiddleBlockX() + 0.5, y2 + 0.5, cp.getMiddleBlockZ() + 0.5);
 				if (lp.distanceTo(cam) < 160)
-					Render3D.label(lp, "SUS " + Math.round(r.score) + " §7" + reasons(r), color, 1f);
+					Render3D.label(lp, (mode.get() == Mode.BASES ? "BASE? " : "SUS ") + Math.round(r.score) + " §7" + reasons(r), color, 1f);
 			}
 		}
 
@@ -424,6 +498,19 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 			}
 		}
 	}
+
+	/** Score of a highlighted chunk, or -1 (in-game test). */
+	public float scoreAt(ChunkPos pos) {
+		Result r = results.get(pos.toLong());
+		return r == null ? -1 : r.score;
+	}
+
+	public String reasonsAt(ChunkPos pos) {
+		Result r = results.get(pos.toLong());
+		return r == null ? "" : reasons(r);
+	}
+
+	public void setModeForTest(boolean bases) { mode.set(bases ? Mode.BASES : Mode.ACTIVITY); }
 
 	public String ageAt(ChunkPos pos) {
 		Age a = ages.get(pos.toLong());
