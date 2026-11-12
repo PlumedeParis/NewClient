@@ -42,6 +42,7 @@ public final class ModuleManager {
 	public static BaseRadar baseRadar;
 	public static dev.zero.modules.SafeMiner safeMiner;
 	public static dev.zero.modules.Fullbright fullbright;
+	public static dev.zero.modules.DonutHunter donutHunter;
 
 	private ModuleManager() {}
 
@@ -62,6 +63,7 @@ public final class ModuleManager {
 		MODULES.add(rotatedDeepslate = new RotatedDeepslate());
 		MODULES.add(spawnerFinder = new SpawnerFinder());
 		MODULES.add(tunnelFinder = new TunnelFinder());
+		MODULES.add(donutHunter = new dev.zero.modules.DonutHunter());
 		MODULES.add(baseRadar = new BaseRadar());
 		MODULES.add(playerDetector = new PlayerDetector());
 	}
