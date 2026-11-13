@@ -240,7 +240,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		boolean filterOn = filterStructures.get();
 		flag(villageChunks, cpos, filterOn && raw.containsKey(Blocks.BELL), 3);
 		boolean ownStructure = false;
-		for (Block m : MARKERS) if (m != Blocks.BELL && m != Blocks.CRYING_OBSIDIAN && m != Blocks.PURPUR_BLOCK && m != Blocks.PURPUR_PILLAR && m != Blocks.NETHER_BRICKS && raw.containsKey(m)) ownStructure = true;
+		for (Block m : MARKERS) if (m != Blocks.BELL && m != Blocks.SPAWNER && m != Blocks.CRYING_OBSIDIAN && m != Blocks.PURPUR_BLOCK && m != Blocks.PURPUR_PILLAR && m != Blocks.NETHER_BRICKS && raw.containsKey(m)) ownStructure = true;
 		if (end && (raw.containsKey(Blocks.PURPUR_BLOCK) || raw.containsKey(Blocks.PURPUR_PILLAR))) ownStructure = true;
 		if (nether && raw.containsKey(Blocks.NETHER_BRICKS)) ownStructure = true;
 		flag(structureChunks, cpos, filterOn && ownStructure, 1);
@@ -253,7 +253,8 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		boolean filter = filterStructures.get();
 		// villages spread over many chunks around their bell; other structures cross chunk borders
 		boolean village = filter && near(villageChunks, cpos, 3);
-		boolean dungeonLike = filter && (raw.containsKey(Blocks.SPAWNER) || raw.containsKey(Blocks.TRIAL_SPAWNER) || raw.containsKey(Blocks.VAULT));
+		// a spawner alone is not a dungeon: players place spawners in bases. Dungeons also have mossy cobblestone.
+		boolean dungeonLike = filter && (raw.containsKey(Blocks.SPAWNER) && raw.containsKey(Blocks.MOSSY_COBBLESTONE) || raw.containsKey(Blocks.TRIAL_SPAWNER) || raw.containsKey(Blocks.VAULT));
 		boolean bastion = filter && raw.containsKey(Blocks.GILDED_BLACKSTONE);
 		boolean ancientCity = filter && (raw.containsKey(Blocks.REINFORCED_DEEPSLATE) || raw.containsKey(Blocks.SCULK_SHRIEKER));
 		boolean stronghold = filter && raw.containsKey(Blocks.END_PORTAL_FRAME);

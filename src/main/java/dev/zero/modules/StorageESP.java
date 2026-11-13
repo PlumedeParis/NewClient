@@ -237,8 +237,8 @@ public class StorageESP extends ScanningModule implements HuntTarget.Provider {
 	@Override
 	public void collectTargets(List<HuntTarget> out) {
 		for (List<Entry> list : found.values()) {
-			if (list.size() < countThreshold.getInt()) continue;
-			out.add(new HuntTarget(BlockPos.containing(list.get(0).box.getCenter()), Math.min(90, 30 + list.size() * 4), list.size() + " storage blocks", 0xFFFFB347));
+			if (list.size() < 2) continue; // a single container is usually natural loot
+			out.add(new HuntTarget(BlockPos.containing(list.get(0).box.getCenter()), Math.min(90, 22 + list.size() * 6), list.size() + " storage blocks", 0xFFFFB347));
 		}
 	}
 

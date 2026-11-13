@@ -58,7 +58,7 @@ public class BaseRadar extends Module {
 	public final KeybindSetting checkKey = add(new KeybindSetting("Check Key", "Mark the nearest target as checked (or un-check it)", GLFW.GLFW_KEY_K));
 	private final BoolSetting hideChecked = add(new BoolSetting("Hide Checked", "Hide targets you already checked", true));
 	private final BoolSetting quiet = add(new BoolSetting("Quiet Mode", "Silence the Hunt modules' own alerts; only alert strong new targets here", true));
-	private final NumberSetting alertScore = add(new NumberSetting("Alert Score", "Score for a BaseRadar alert", 90, 30, 300, 5));
+	private final NumberSetting alertScore = add(new NumberSetting("Alert Confidence", "Pop-up when a place reaches this base confidence", 70, 30, 99, 1, "%"));
 	private final BoolSetting hud = add(new BoolSetting("HUD", "Ranked list + mini radar", true));
 	private final ColorSetting rank1 = add(new ColorSetting("#1 Color", "Best target", 0xFFFF4D6D, false));
 	private final ColorSetting rank2 = add(new ColorSetting("#2 Color", "Second target", 0xFFFFB347, false));
@@ -71,6 +71,8 @@ public class BaseRadar extends Module {
 		final BlockPos pos;
 		float score;
 		final Set<String> reasons = new LinkedHashSet<>();
+		final List<HuntTarget> evidence = new ArrayList<>();
+		dev.zero.module.Confidence.Result conf;
 		int color;
 		boolean checked;
 		double dist;
@@ -80,9 +82,12 @@ public class BaseRadar extends Module {
 			score = t.score();
 			color = t.color();
 			reasons.add(t.reason());
+			evidence.add(t);
 		}
 
-		String reasonText() { return String.join(", ", reasons); }
+		String reasonText() { return String.join(", ", conf != null ? conf.reasons() : reasons); }
+
+		public int percent() { return conf == null ? 0 : conf.percent(); }
 	}
 
 	private record Checked(String dim, int x, int z) {}
@@ -233,27 +238,31 @@ public class BaseRadar extends Module {
 				}
 			}
 			if (into == null) merged.add(new Target(h));
-			else if (into.reasons.add(h.reason())) into.score += h.score() * 0.5f; // independent evidence stacks
+			else if (into.reasons.add(h.reason())) {
+				into.score += h.score() * 0.5f; // independent evidence stacks
+				into.evidence.add(h);
+			}
 		}
 		String dim = WorldUtil.dimensionName(mc.level);
 		Vec3 me = mc.player.position();
 		targets.clear();
 		for (Target t : merged) {
 			if (t.score < minScore.get()) continue;
+			t.conf = dev.zero.module.Confidence.of(t.evidence);
 			t.checked = isChecked(dim, t.pos);
 			t.dist = Math.sqrt(Math.pow(t.pos.getX() + 0.5 - me.x, 2) + Math.pow(t.pos.getZ() + 0.5 - me.z, 2));
 			targets.add(t);
 			long key = BlockPos.asLong(t.pos.getX() >> 4, 0, t.pos.getZ() >> 4);
-			if (!t.checked && t.score >= alertScore.get() && alerted.add(key)) {
-				Notifications.push("Base target " + Math.round(t.score), WorldUtil.distance(t.dist) + " " + WorldUtil.direction(me, t.pos.getX(), t.pos.getZ())
+			if (!t.checked && t.percent() >= alertScore.get() && alerted.add(key)) {
+				Notifications.push(t.conf.label() + " " + t.percent() + "%", WorldUtil.distance(t.dist) + " " + WorldUtil.direction(me, t.pos.getX(), t.pos.getZ())
 					+ "  •  " + t.reasonText(), Notifications.Type.FOUND, 6000);
 				Sounds.ping();
 			}
 		}
 		targets.sort(switch (sort.get()) {
-			case SCORE -> (a, b) -> Float.compare(b.score, a.score);
+			case SCORE -> (a, b) -> Integer.compare(b.percent(), a.percent());
 			case DISTANCE -> (a, b) -> Double.compare(a.dist, b.dist);
-			case SMART -> (a, b) -> Double.compare(b.score / (1 + b.dist / 150), a.score / (1 + a.dist / 150));
+			case SMART -> (a, b) -> Double.compare(b.percent() / (1 + b.dist / 150), a.percent() / (1 + a.dist / 150));
 		});
 	}
 
@@ -287,15 +296,15 @@ public class BaseRadar extends Module {
 				Render3D.box(new AABB(c.x - 0.4, bottom, c.z - 0.4, c.x + 0.4, top, c.z + 0.4), ColorUtil.withAlpha(color, 50), ColorUtil.withAlpha(color, 170), 1.5f, true);
 				AABB tb = new AABB(t.pos).inflate(0.3);
 				Render3D.box(tb, ColorUtil.withAlpha(color, 70), ColorUtil.withAlpha(color, 255), 2f, true);
-				if (Render3D.look(tb)) Render3D.lookText("Base target #" + (i + 1) + " (" + Math.round(t.score) + ") \u00B7 " + t.reasonText(), color);
+				if (Render3D.look(tb)) Render3D.lookText(t.conf.label() + " " + t.percent() + "% \u00B7 " + t.reasonText(), color);
 				String why = t.reasonText();
 				if (why.length() > 42) why = why.substring(0, 40) + "…";
-				Render3D.importantLabel(c.add(0, 1.6, 0), "#" + (i + 1) + " " + Math.round(t.score) + " §7" + why + " • " + WorldUtil.distance(cam.distanceTo(c)), color, 1f);
+				Render3D.importantLabel(c.add(0, 1.6, 0), "#" + (i + 1) + " " + t.percent() + "% " + t.conf.label().toUpperCase(java.util.Locale.ROOT) + " §7" + why + " • " + WorldUtil.distance(cam.distanceTo(c)), color, 1f);
 				if (i == 0 && tracer.get()) Render3D.tracer(c, ColorUtil.withAlpha(color, 220), 2f);
 			} else if (others.get()) {
 				int color = t.checked ? 0xFF6B7280 : markerColor.get();
 				Render3D.box(new AABB(t.pos).inflate(0.2), ColorUtil.withAlpha(color, 25), ColorUtil.withAlpha(color, 120), 1f, true);
-				if (cam.distanceTo(c) < 64) Render3D.label(c.add(0, 1.2, 0), (t.checked ? "✔ " : "#" + (i + 1) + " ") + Math.round(t.score), color, 0.8f);
+				if (cam.distanceTo(c) < 64) Render3D.label(c.add(0, 1.2, 0), (t.checked ? "✔ " : "#" + (i + 1) + " ") + t.percent() + "%", color, 0.8f);
 			}
 		}
 	}
@@ -306,9 +315,10 @@ public class BaseRadar extends Module {
 		List<Target> list = visible();
 		int open = 0;
 		for (Target t : targets) if (!t.checked) open++;
-		int rows = Math.min(6, list.size());
-		int w = 196, rowH = 11, radar = 64;
-		int h = 18 + Math.max(rows * rowH, 10) + radar + 8;
+		int rows = Math.max(0, Math.min(5, list.size() - 1));
+		int w = 200, rowH = 11, radar = 64;
+		int card = list.isEmpty() ? 14 : 50;
+		int h = 18 + card + rows * rowH + (rows > 0 ? 3 : 0) + radar + 8;
 		int[] pos = Hud.slot("Base Radar", w, h);
 		int x = pos[0], y = pos[1];
 		int accent = ClientSettings.accent();
@@ -316,19 +326,37 @@ public class BaseRadar extends Module {
 		Render2D.roundedRect(g, x, y, w, h, 5, 0xE0101016);
 		Render2D.gradientH(g, x + 5, y, w - 10, 1, 0xFFFF4D6D, accent);
 		Render2D.text(g, "Base Radar", x + 6, y + 5, 0xFFFFFFFF, false);
-		String stat = open + " open • " + (targets.size() - open) + " checked";
+		String stat = open + " open \u2022 " + (targets.size() - open) + " checked";
 		Render2D.text(g, stat, x + w - 6 - Render2D.width(stat), y + 5, 0xFF9A9AB0, false);
 		Vec3 me = mc.player.position();
-		if (rows == 0) Render2D.text(g, "§8No targets yet - enable Hunt modules", x + 6, y + 18, 0xFF9A9AB0, false);
+		if (list.isEmpty()) Render2D.text(g, "\u00A78No targets yet \u2014 turn on Hunt / Signs modules", x + 6, y + 18, 0xFF9A9AB0, false);
+		else {
+			// the best target: confidence ring + why
+			Target t = list.get(0);
+			int cy0 = y + 17;
+			int cc = t.checked ? 0xFF6B7280 : t.conf.color();
+			Render2D.roundedRect(g, x + 4, cy0, w - 8, card - 3, 5, 0x66000000);
+			Render2D.ring(g, x + 26, cy0 + 23, 17, 3.2f, t.percent() / 100f, cc, 0xFF23232E);
+			String pct = t.percent() + "%";
+			Render2D.text(g, "\u00A7l" + pct, x + 26 - Render2D.width("\u00A7l" + pct) / 2, cy0 + 19, 0xFFFFFFFF, false);
+			String d = WorldUtil.distance(t.dist) + " " + WorldUtil.direction(me, t.pos.getX(), t.pos.getZ());
+			Render2D.text(g, "\u00A7l" + (t.checked ? "Checked" : t.conf.label()), x + 50, cy0 + 4, cc, false);
+			Render2D.text(g, d, x + w - 9 - Render2D.width(d), cy0 + 4, 0xFFE6E6F0, false);
+			List<String> why = t.conf.reasons();
+			for (int i = 0; i < Math.min(3, why.size()); i++) {
+				String line = i == 2 && why.size() > 3 ? "+" + (why.size() - 2) + " more clues" : why.get(i);
+				Render2D.text(g, "\u00A7a\u2714 \u00A7r" + Render2D.trim(line, w - 72), x + 50, cy0 + 15 + i * 10, 0xFFB4B4C8, false);
+			}
+		}
 		for (int i = 0; i < rows; i++) {
-			Target t = list.get(i);
-			int ry = y + 17 + i * rowH;
-			int color = t.checked ? 0xFF6B7280 : i < focus.getInt() ? rankColor(i) : markerColor.get();
-			Render2D.text(g, (t.checked ? "✔" : "#" + (i + 1)), x + 6, ry, color, false);
-			Render2D.text(g, String.valueOf(Math.round(t.score)), x + 24, ry, 0xFFFFFFFF, false);
+			Target t = list.get(i + 1);
+			int ry = y + 17 + card + i * rowH;
+			int color = t.checked ? 0xFF6B7280 : t.conf.color();
+			Render2D.text(g, (t.checked ? "\u2714" : "#" + (i + 2)), x + 6, ry, i + 1 < focus.getInt() && !t.checked ? rankColor(i + 1) : 0xFF9A9AB0, false);
+			Render2D.text(g, t.percent() + "%", x + 24, ry, color, false);
 			String d = WorldUtil.distance(t.dist) + " " + WorldUtil.direction(me, t.pos.getX(), t.pos.getZ());
 			int dw = Render2D.width(d);
-			Render2D.text(g, Render2D.trim(t.reasonText(), w - 54 - dw), x + 46, ry, 0xFFB4B4C8, false);
+			Render2D.text(g, Render2D.trim(t.reasonText(), w - 62 - dw), x + 52, ry, 0xFFB4B4C8, false);
 			Render2D.text(g, d, x + w - 6 - dw, ry, 0xFF9A9AB0, false);
 		}
 		// Mini radar (forward = up)
@@ -355,6 +383,17 @@ public class BaseRadar extends Module {
 		Render2D.text(g, "256m", cx + rad - 18, cy + rad - 8, 0xFF5C5C70, false);
 		String hint = "[" + checkKey.display() + "] check";
 		Render2D.text(g, hint, x + 6, y + h - 13, 0xFF5C5C70, false);
+	}
+
+	/** Confidence of the best open target, 0 when there is none (in-game test). */
+	public int topPercent() {
+		List<Target> l = visible();
+		return l.isEmpty() ? 0 : l.get(0).percent();
+	}
+
+	public String topWhy() {
+		List<Target> l = visible();
+		return l.isEmpty() ? "" : l.get(0).conf.label() + ": " + l.get(0).reasonText();
 	}
 
 	public String describe() { return String.format(Locale.ROOT, "%d targets", targets.size()); }

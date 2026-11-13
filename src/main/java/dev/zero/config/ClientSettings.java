@@ -37,8 +37,10 @@ public final class ClientSettings {
 	public static final BoolSetting CHAT_ALERTS = add(new BoolSetting("Chat Alerts", "Also write finds in your local chat", false));
 
 	public static final SectionSetting S_LOOK = add(new SectionSetting("Look", false));
-	public static final ColorSetting ACCENT = add(new ColorSetting("Accent", "Main theme color", 0xFF8B7CFF, false));
-	public static final ColorSetting ACCENT_2 = add(new ColorSetting("Accent 2", "Second gradient color", 0xFF4FD1C5, false));
+	public static final EnumSetting<dev.zero.gui.Theme.Preset> THEME = add(new EnumSetting<>("Theme", "Color theme of the whole client. Custom uses the two accent colors below", dev.zero.gui.Theme.Preset.ZERO));
+	public static final BoolSetting SMOOTH_FONT = add(new BoolSetting("Smooth Font", "Crisp vector text (Montserrat) in the GUI, HUD and pop-ups instead of Minecraft's pixel font", true));
+	public static final ColorSetting ACCENT = add(new ColorSetting("Accent", "Main color (Theme = Custom)", 0xFF8B7CFF, false)).visibleWhen(() -> THEME.get() == dev.zero.gui.Theme.Preset.CUSTOM);
+	public static final ColorSetting ACCENT_2 = add(new ColorSetting("Accent 2", "Second gradient color (Theme = Custom)", 0xFF4FD1C5, false)).visibleWhen(() -> THEME.get() == dev.zero.gui.Theme.Preset.CUSTOM);
 	public static final BoolSetting CHROMA = add(new BoolSetting("Chroma", "Animated rainbow accent", false));
 	public static final NumberSetting GUI_OPACITY = add(new NumberSetting("Panel Opacity", "ClickGUI background opacity", 0.86, 0.4, 1.0, 0.01));
 	public static final BoolSetting BLUR = add(new BoolSetting("Blur", "Blur the world behind the ClickGUI", true));
@@ -67,11 +69,13 @@ public final class ClientSettings {
 	}
 
 	public static int accent() {
-		return CHROMA.get() ? ColorUtil.chroma(0, 1f, 0.55f, 1f) : ACCENT.get();
+		if (CHROMA.get()) return ColorUtil.chroma(0, 1f, 0.55f, 1f);
+		return THEME.get() == dev.zero.gui.Theme.Preset.CUSTOM ? ACCENT.get() : THEME.get().accent;
 	}
 
 	public static int accent2() {
-		return CHROMA.get() ? ColorUtil.chroma(1500, 1f, 0.55f, 1f) : ACCENT_2.get();
+		if (CHROMA.get()) return ColorUtil.chroma(1500, 1f, 0.55f, 1f);
+		return THEME.get() == dev.zero.gui.Theme.Preset.CUSTOM ? ACCENT_2.get() : THEME.get().accent2;
 	}
 
 	/** Gradient accent at position t (0..1) for gradient texts / bars, slowly animated. */
@@ -87,6 +91,8 @@ public final class ClientSettings {
 	}
 
 	public static void fromJson(JsonObject o) {
+		// configs from before themes: keep the user's own accent colors
+		boolean hadTheme = o.has("Theme");
 		for (Setting<?> s : SETTINGS) {
 			if (s instanceof SectionSetting) continue;
 			JsonElement e = o.get(s.getName());
@@ -97,5 +103,6 @@ public final class ClientSettings {
 				}
 			}
 		}
+		if (!hadTheme && (ACCENT.get() != 0xFF8B7CFF || ACCENT_2.get() != 0xFF4FD1C5)) THEME.set(dev.zero.gui.Theme.Preset.CUSTOM);
 	}
 }

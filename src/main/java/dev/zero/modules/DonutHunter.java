@@ -130,7 +130,7 @@ public class DonutHunter extends Module {
 		Area(BlockPos center, String dim) { this.center = center; this.dim = dim; }
 	}
 
-	private record Lead(BlockPos pos, float score, String reason) {}
+	private record Lead(BlockPos pos, float score, String reason, int conf) {}
 
 	private Area area;
 	private final List<Area> checked = new ArrayList<>();
@@ -228,27 +228,29 @@ public class DonutHunter extends Module {
 		for (Module m : ModuleManager.all())
 			if (m != ModuleManager.baseRadar && m.isEnabled() && m instanceof HuntTarget.Provider p) p.collectTargets(all);
 		BlockPos me = mc.player.blockPosition();
-		List<Lead> merged = new ArrayList<>();
-		List<float[]> sums = new ArrayList<>();
+		List<List<HuntTarget>> groups = new ArrayList<>();
 		for (HuntTarget t : all) {
 			double dx = t.pos().getX() - me.getX(), dz = t.pos().getZ() - me.getZ();
 			if (dx * dx + dz * dz > (double) range * range) continue;
-			int hit = -1;
-			for (int i = 0; i < merged.size(); i++) if (merged.get(i).pos.distSqr(t.pos()) < 24 * 24) { hit = i; break; }
-			if (hit < 0) {
-				merged.add(new Lead(t.pos(), t.score(), t.reason()));
-				sums.add(new float[] {t.score(), t.score()});
-			} else {
-				float[] s = sums.get(hit);
-				s[0] += t.score() * 0.5f; // more evidence at the same place = stronger lead
-				if (t.score() > s[1]) {
-					s[1] = t.score();
-					merged.set(hit, new Lead(t.pos(), s[0], t.reason()));
-				} else merged.set(hit, new Lead(merged.get(hit).pos, s[0], merged.get(hit).reason));
+			List<HuntTarget> hit = null;
+			for (List<HuntTarget> grp : groups) if (grp.get(0).pos().distSqr(t.pos()) < 24 * 24) { hit = grp; break; }
+			if (hit == null) {
+				hit = new ArrayList<>();
+				groups.add(hit);
 			}
+			hit.add(t);
 		}
 		List<Lead> out = new ArrayList<>();
-		for (Lead l : merged) if (l.score >= leadScore.get()) out.add(l);
+		for (List<HuntTarget> grp : groups) {
+			// strongest clue first: it gives the lead its place and name; the others raise the score
+			grp.sort((a, b) -> Float.compare(b.score(), a.score()));
+			float score = grp.get(0).score();
+			for (int i = 1; i < grp.size(); i++) score += grp.get(i).score() * 0.5f;
+			if (score < leadScore.get()) continue;
+			var conf = dev.zero.module.Confidence.of(grp);
+			String reason = conf.reasons().size() > 1 ? conf.reasons().get(0) + " +" + (conf.reasons().size() - 1) : conf.reasons().get(0);
+			out.add(new Lead(grp.get(0).pos(), score, reason, conf.percent()));
+		}
 		out.sort((a, b) -> Float.compare(b.score, a.score));
 		return out;
 	}
@@ -301,7 +303,7 @@ public class DonutHunter extends Module {
 			if (announced.add(c)) {
 				foundTotal++;
 				if (alerts.get()) {
-					Notifications.push("DonutHunter", "New lead: " + l.reason + " \u2022 " + where(l.pos), Notifications.Type.FOUND, 6000);
+					Notifications.push("DonutHunter", "New lead " + l.conf + "%: " + l.reason + " \u2022 " + where(l.pos), Notifications.Type.FOUND, 6000);
 					Sounds.ping();
 				}
 			}
@@ -404,7 +406,7 @@ public class DonutHunter extends Module {
 			if (leads.isEmpty()) lines.add("\u00A77No leads in range \u2014 keep mining");
 			for (int i = 0; i < Math.min(leads.size(), shown.getInt()); i++) {
 				Lead l = leads.get(i);
-				lines.add((i == 0 ? "\u00A7a#1 " : "\u00A7f#" + (i + 1) + " ") + "\u00A7f" + Render2D.trim(l.reason, 150) + " \u00A77" + where(l.pos));
+				lines.add((i == 0 ? "\u00A7a#1 " : "\u00A7f#" + (i + 1) + " ") + (l.conf >= 85 ? "\u00A7a" : l.conf >= 60 ? "\u00A7e" : "\u00A76") + l.conf + "% \u00A7f" + Render2D.trim(l.reason, 150) + " \u00A77" + where(l.pos));
 			}
 			if (leads.size() > shown.getInt()) lines.add("\u00A78+" + (leads.size() - shown.getInt()) + " more");
 			if (exploreHint.get() && exploreDir >= 0) lines.add("\u00A77Explore \u00A7b" + DIRS[exploreDir] + "\u00A77 (new ground)");

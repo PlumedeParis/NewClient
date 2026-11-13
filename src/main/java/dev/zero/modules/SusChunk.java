@@ -122,7 +122,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	/** Blocks that only generate inside natural structures: everything around them is ignored (this chunk and its neighbours). */
 	private static final Set<Block> STRUCTURE = Set.of(Blocks.BELL, Blocks.END_PORTAL_FRAME, Blocks.REINFORCED_DEEPSLATE, Blocks.SCULK_SHRIEKER,
 		Blocks.GILDED_BLACKSTONE, Blocks.NETHER_BRICKS, Blocks.COBWEB, Blocks.VAULT, Blocks.TRIAL_SPAWNER, Blocks.PRISMARINE_BRICKS,
-		Blocks.DARK_PRISMARINE, Blocks.CHISELED_SANDSTONE, Blocks.MOSSY_COBBLESTONE, Blocks.SPAWNER, Blocks.CHISELED_STONE_BRICKS, Blocks.PURPUR_BLOCK,
+		Blocks.DARK_PRISMARINE, Blocks.CHISELED_SANDSTONE, Blocks.MOSSY_COBBLESTONE, Blocks.CHISELED_STONE_BRICKS, Blocks.PURPUR_BLOCK,
 		Blocks.INFESTED_STONE_BRICKS, Blocks.INFESTED_MOSSY_STONE_BRICKS, Blocks.INFESTED_CRACKED_STONE_BRICKS, Blocks.CHISELED_TUFF,
 		Blocks.CHISELED_TUFF_BRICKS, Blocks.SUSPICIOUS_SAND, Blocks.SUSPICIOUS_GRAVEL, Blocks.CRYING_OBSIDIAN, Blocks.DARK_OAK_FENCE,
 		Blocks.TRIPWIRE_HOOK, Blocks.SCULK_CATALYST, Blocks.POLISHED_BLACKSTONE_BRICKS, Blocks.CRACKED_DEEPSLATE_TILES,
@@ -521,7 +521,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	@Override
 	public void collectTargets(List<HuntTarget> out) {
 		for (Result r : results.values())
-			if (r.focus != null) out.add(new HuntTarget(r.focus, Math.min(70, r.score), "Sus: " + reasons(r), 0xFFFF7AF5));
+			if (r.focus != null) out.add(new HuntTarget(r.focus, Math.min(70, r.score), "Buried: " + reasons(r), 0xFFFF7AF5));
 	}
 
 }

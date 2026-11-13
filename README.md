@@ -81,6 +81,17 @@ X-Ray works with vanilla rendering, Fabric API's renderer (Indigo) and **Sodium*
 
 ## Interface
 
+### 2.2: premium look + base confidence
+
+* **Base confidence**: every place gets one number, "how likely is this a base", with the reasons: `89% Base ✔ Player spawner ✔ 5 storage blocks ✔ Buried: 3 kinds of base blocks`. Different kinds of clues combine (two medium clues beat one), the same clue repeated counts once, and it never claims 100%. Shown on BaseRadar's card (confidence ring), on beams, in the look label, in alerts and on DonutHunter's leads. BaseRadar alerts at 70% by default.
+* **Smooth font**: the GUI, HUD and pop-ups use crisp vector text (Montserrat) drawn at your exact screen resolution instead of Minecraft's pixel font. Client → Look → Smooth Font to switch back.
+* **Themes** (Client → Look → Theme): Zero, Midnight, Neon, Ember, Aurora, Gold, Mono, or Custom with your own two colors.
+* A placed spawner no longer makes SusChunk / BaseFinder treat a base as a natural dungeon (dungeons are recognised by spawner + mossy cobblestone).
+
+| Base confidence | Ember | Neon | Aurora |
+|---|---|---|---|
+| ![](docs/confidence.png) | ![](docs/theme_ember.png) | ![](docs/theme_neon.png) | ![](docs/theme_aurora.png) |
+
 ### 2.0: quieter, simpler, more accurate
 
 * **Alerts** (Client panel → Alerts): **Everything** = a pop-up for every sign; **Important** (default) = bases, players and leads pop up, small signs of life (kelp, tunnels, geodes, deepslate...) merge into one rolling "Signs of life ×6" pop-up; **Minimal** = only bases, players and leads. At most 3 pop-ups on screen, sounds are spaced out (never a burst), module toggle pop-ups and chat lines are off by default.

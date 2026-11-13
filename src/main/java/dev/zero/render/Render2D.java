@@ -116,6 +116,10 @@ public final class Render2D {
 	}
 
 	public static void text(GuiGraphics g, String s, int x, int y, int color, boolean shadow) {
+		if (SmoothFont.active()) {
+			SmoothFont.draw(g, s, x, y, color, shadow);
+			return;
+		}
 		if (s.indexOf('\u00D8') < 0) {
 			g.drawString(font(), s, x, y, color, shadow);
 			return;
@@ -163,11 +167,20 @@ public final class Render2D {
 	}
 
 	public static void centeredText(GuiGraphics g, String s, int cx, int y, int color, boolean shadow) {
-		text(g, s, cx - font().width(s) / 2, y, color, shadow);
+		text(g, s, cx - width(s) / 2, y, color, shadow);
 	}
 
 	/** Each character tinted along an animated accent gradient. */
 	public static void gradientText(GuiGraphics g, String s, int x, int y, java.util.function.IntUnaryOperator colorAtIndex, boolean shadow) {
+		if (SmoothFont.active()) {
+			int px = x;
+			for (int i = 0; i < s.length(); i++) {
+				String ch = String.valueOf(s.charAt(i));
+				SmoothFont.draw(g, ch, px, y, colorAtIndex.applyAsInt(i), shadow);
+				px += SmoothFont.width(ch);
+			}
+			return;
+		}
 		int cx = x;
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
@@ -182,7 +195,7 @@ public final class Render2D {
 		}
 	}
 
-	public static int width(String s) { return font().width(s.replace('\u00D8', 'O')); }
+	public static int width(String s) { return SmoothFont.active() ? SmoothFont.width(s) : font().width(s.replace('\u00D8', 'O')); }
 
 	/** Cuts a string with an ellipsis so it fits in {@code max} pixels. */
 	public static String trim(String s, int max) {
@@ -197,7 +210,8 @@ public final class Render2D {
 		g.pose().pushMatrix();
 		g.pose().translate(x, y);
 		g.pose().scale(scale, scale);
-		g.drawString(font(), s, 0, 0, color, shadow);
+		if (SmoothFont.active()) SmoothFont.draw(g, s, 0, 0, color, shadow);
+		else g.drawString(font(), s, 0, 0, color, shadow);
 		g.pose().popMatrix();
 	}
 
@@ -207,6 +221,28 @@ public final class Render2D {
 		ShapeTextures.ensure();
 		int tex = ShapeTextures.SIZE;
 		g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.CIRCLE, cx - radius, cy - radius, 0, 0, radius * 2, radius * 2, tex, tex, tex, tex, color);
+	}
+
+	/** Smooth progress ring (0..1), starting at the top, drawn in real pixels so it stays round and sharp. */
+	public static void ring(GuiGraphics g, int cx, int cy, float radius, float thickness, float progress, int color, int track) {
+		ShapeTextures.ensure();
+		float gs = (float) Minecraft.getInstance().getWindow().getGuiScale();
+		int tex = ShapeTextures.SIZE;
+		int size = Math.max(2, Math.round(thickness * gs));
+		int steps = Math.max(48, (int) (radius * gs * 1.6f));
+		g.pose().pushMatrix();
+		g.pose().translate(cx, cy);
+		g.pose().scale(1f / gs, 1f / gs);
+		for (int pass = 0; pass < 2; pass++) {
+			int n = pass == 0 ? steps : Math.round(steps * Math.max(0, Math.min(1, progress)));
+			int c = pass == 0 ? track : color;
+			for (int i = 0; i <= n; i++) {
+				double a = -Math.PI / 2 + 2 * Math.PI * i / steps;
+				int px = (int) Math.round(Math.cos(a) * radius * gs) - size / 2, py = (int) Math.round(Math.sin(a) * radius * gs) - size / 2;
+				g.blit(RenderPipelines.GUI_TEXTURED, ShapeTextures.CIRCLE, px, py, 0, 0, size, size, tex, tex, tex, tex, c);
+			}
+		}
+		g.pose().popMatrix();
 	}
 
 	public static boolean hovered(double mx, double my, int x, int y, int w, int h) {
