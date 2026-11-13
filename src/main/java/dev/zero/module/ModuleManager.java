@@ -54,6 +54,8 @@ public final class ModuleManager {
 		MODULES.add(spawnerEsp = new SpawnerESP());
 		MODULES.add(crosshair = new Crosshair());
 		MODULES.add(freecam = new Freecam());
+		MODULES.add(donutHunter = new dev.zero.modules.DonutHunter());
+		MODULES.add(baseRadar = new BaseRadar());
 		MODULES.add(baseFinder = new BaseFinder());
 		MODULES.add(susChunk = new SusChunk());
 		MODULES.add(seedOreFinder = new SeedOreFinder());
@@ -63,8 +65,6 @@ public final class ModuleManager {
 		MODULES.add(rotatedDeepslate = new RotatedDeepslate());
 		MODULES.add(spawnerFinder = new SpawnerFinder());
 		MODULES.add(tunnelFinder = new TunnelFinder());
-		MODULES.add(donutHunter = new dev.zero.modules.DonutHunter());
-		MODULES.add(baseRadar = new BaseRadar());
 		MODULES.add(playerDetector = new PlayerDetector());
 	}
 

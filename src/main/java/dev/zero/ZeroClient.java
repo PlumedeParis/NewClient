@@ -66,7 +66,7 @@ public final class ZeroClient implements ClientModInitializer {
 		});
 		// Custom crosshair: draws ZERØ's design instead of the vanilla one while enabled.
 		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (graphics, delta) -> {
-			if (ModuleManager.crosshair != null && ModuleManager.crosshair.isEnabled()) ModuleManager.crosshair.renderCrosshair(graphics);
+			if (!hidden && ModuleManager.crosshair != null && ModuleManager.crosshair.isEnabled()) ModuleManager.crosshair.renderCrosshair(graphics);
 			else vanilla.render(graphics, delta);
 		});
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConfigManager.save());
@@ -76,6 +76,11 @@ public final class ZeroClient implements ClientModInitializer {
 	}
 
 	private static int profileCheckTicks;
+
+	/** "Hide All": nothing is drawn (ESP, HUD, pop-ups) while modules keep working. */
+	private static boolean hidden;
+
+	public static boolean hidden() { return hidden; }
 
 	private static void tick(Minecraft mc) {
 		if (profileCheckTicks > 0 && --profileCheckTicks == 0 && mc.level != null) {
@@ -110,6 +115,7 @@ public final class ZeroClient implements ClientModInitializer {
 	private static void handleKeys(Minecraft mc) {
 		Set<Integer> wanted = new HashSet<>();
 		wanted.add(ClientSettings.GUI_KEY.get());
+		wanted.add(ClientSettings.HIDE_KEY.get());
 		for (Module m : ModuleManager.all()) if (m.keybind.isBound()) wanted.add(m.keybind.get());
 		HELD_KEYS.retainAll(wanted);
 
@@ -122,6 +128,11 @@ public final class ZeroClient implements ClientModInitializer {
 			}
 			if (!HELD_KEYS.add(key)) continue; // still held from before
 			if (mc.screen != null) continue; // never react while typing in chat / menus
+			if (key == ClientSettings.HIDE_KEY.get()) {
+				hidden = !hidden;
+				if (!hidden) dev.zero.hud.Notifications.push("ZER\u00D8 visible", "Everything is drawn again", dev.zero.hud.Notifications.Type.INFO, 1500);
+				continue;
+			}
 			if (key == ClientSettings.GUI_KEY.get()) {
 				dev.zero.gui.IntroScreen.openGui();
 				continue;
@@ -137,7 +148,7 @@ public final class ZeroClient implements ClientModInitializer {
 
 	private static void render3D(MultiBufferSource.BufferSource buffers) {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.level == null || mc.player == null) return;
+		if (mc.level == null || mc.player == null || hidden) return;
 		float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
 		long t0 = System.nanoTime();
 		Render3D.begin();

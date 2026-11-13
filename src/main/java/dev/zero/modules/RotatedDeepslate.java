@@ -39,7 +39,7 @@ public class RotatedDeepslate extends ChunkFinderModule<RotatedDeepslate.Found> 
 	}
 
 	public RotatedDeepslate() {
-		super("RotatedDeepslate", "Deepslate placed sideways = player-placed (DonutSMP trick)", Category.HUNT);
+		super("RotatedDeepslate", "Deepslate placed sideways = player-placed (DonutSMP trick)", Category.SIGNS);
 	}
 
 	@Override

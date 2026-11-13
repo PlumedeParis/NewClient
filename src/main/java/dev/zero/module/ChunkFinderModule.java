@@ -91,11 +91,11 @@ public abstract class ChunkFinderModule<R> extends ScanningModule {
 		if (save.get()) FindsStore.add(new FindsStore.Find(FindsStore.Kind.SUS, at.getX(), at.getY(), at.getZ(), dim, title + ": " + details, System.currentTimeMillis()), true);
 		if (dev.zero.modules.BaseRadar.quietMode()) return;
 		if (notify.get()) {
-			Notifications.push(title, WorldUtil.fmt(at) + "  •  " + details, Notifications.Type.FOUND, 6000);
-			ChatUtil.info(Component.literal(title + " ").withStyle(s -> s.withColor(color & 0xFFFFFF).withBold(true))
+			Notifications.sign(title, WorldUtil.fmt(at) + "  •  " + details, Notifications.Type.FOUND, 6000);
+			ChatUtil.alert(Component.literal(title + " ").withStyle(s -> s.withColor(color & 0xFFFFFF).withBold(true))
 				.append(Component.literal("at " + WorldUtil.fmt(at) + " ").withStyle(ChatFormatting.WHITE))
 				.append(Component.literal("(" + details + ")").withStyle(ChatFormatting.GRAY)));
 		}
-		if (sound.get()) Sounds.ping();
+		if (sound.get() && Notifications.signSound()) Sounds.ping();
 	}
 }

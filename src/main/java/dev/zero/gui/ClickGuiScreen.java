@@ -47,6 +47,7 @@ public class ClickGuiScreen extends Screen {
 		search = new TextField("Search modules...  (just start typing)", 32, null, t -> query = t.toLowerCase(Locale.ROOT).trim());
 		search.setText(query);
 		openAnim.setTarget(1);
+		if (!LAYOUT.isEmpty() && !LAYOUT.containsKey("SIGNS")) LAYOUT.clear(); // layout from before the category rework
 		int i = 0;
 		for (Category c : Category.values()) {
 			List<Comp> comps = new ArrayList<>();
@@ -54,7 +55,13 @@ public class ClickGuiScreen extends Screen {
 			panels.add(makePanel(c.name(), c.title, c.icon, c.color, comps, i++));
 		}
 		List<Comp> client = new ArrayList<>();
-		for (Setting<?> s : ClientSettings.SETTINGS) client.add(SettingComp.of(s));
+		List<Comp> group = null;
+		for (Setting<?> s : ClientSettings.SETTINGS) {
+			if (s instanceof dev.zero.setting.SectionSetting sec) {
+				group = new ArrayList<>();
+				client.add(new dev.zero.gui.comp.SectionComp(sec.getName(), group, sec.get()));
+			} else (group != null ? group : client).add(SettingComp.of(s));
+		}
 		panels.add(makePanel("CLIENT", "Client", "⚙", 0xFFB4B4C8, client, i));
 	}
 
@@ -69,23 +76,30 @@ public class ClickGuiScreen extends Screen {
 
 	@Override
 	protected void init() {
-		// Keep every panel reachable: wrap default positions and clamp saved ones to the window.
-		int row = 0, col = 0;
+		// Panels without a saved position are packed into tidy columns (shortest column first).
+		int cols = Math.max(1, (width - 20) / (Panel.WIDTH + 10));
+		int used = Math.min(cols, panels.size());
+		int left = Math.max(8, (width - (used * (Panel.WIDTH + 10) - 10)) / 2);
+		int[] colY = new int[used];
+		java.util.Arrays.fill(colY, 40);
 		for (Panel p : panels) {
 			if (!LAYOUT.containsKey(p.id)) {
-				int x = 16 + col * (Panel.WIDTH + 12);
-				if (x + Panel.WIDTH > width - 8 && col > 0) {
-					row++;
-					col = 0;
-					x = 16;
-				}
-				p.x = x;
-				p.y = 42 + row * 150;
-				col++;
+				int best = 0;
+				for (int c = 1; c < used; c++) if (colY[c] < colY[best]) best = c;
+				p.x = left + best * (Panel.WIDTH + 10);
+				p.y = colY[best];
+				colY[best] += p.fullHeight() + 10;
 			}
 			p.x = Math.max(0, Math.min(p.x, width - Panel.WIDTH));
-			p.y = Math.max(36, Math.min(p.y, height - 30));
+			p.y = Math.max(36, p.y);
 		}
+	}
+
+	/** Forget every saved panel position: the next open packs them neatly again. */
+	public static void tidy() {
+		LAYOUT.clear();
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (mc.screen instanceof ClickGuiScreen) mc.setScreen(new ClickGuiScreen());
 	}
 
 	// ---- Layout persistence --------------------------------------------------------------
@@ -151,19 +165,25 @@ public class ClickGuiScreen extends Screen {
 	}
 
 	private int[] topBar() {
-		int w = Math.min(width - 16, 430), h = 22;
+		int w = Math.min(width - 16, 560), h = 22;
 		return new int[] {width / 2 - w / 2, 10, w, h};
 	}
 
-	private static final String[] TOP_BUTTONS = {"\u2605 Finds", "\u2630 Profiles", "\u25A3 HUD"};
-	private static final int[] TOP_WIDTHS = {52, 62, 44};
+	private static final String[] TOP_ICONS = {"\u2605", "\u2630", "\u25A3", "!", "\u2726"};
+	private static final String[] TOP_LABELS = {"Finds", "Profiles", "HUD", "Alerts", "Setup"};
+	private static final int[] TOP_FULL = {52, 62, 44, 54, 52};
 
-	/** Buttons on the right of the top bar, right to left: Finds, Profiles, HUD. */
+	/** On a narrow window the buttons show only their icon so the search box keeps its room. */
+	private boolean compactTop() { return topBar()[2] < 500; }
+
+	private int topWidth(int i) { return compactTop() ? 18 : TOP_FULL[i]; }
+
+	/** Buttons on the right of the top bar, right to left: Finds, Profiles, HUD, Alerts, Setup. */
 	private int[] topButton(int i) {
 		int[] t = topBar();
 		int x = t[0] + t[2] - 6;
-		for (int k = 0; k <= i; k++) x -= TOP_WIDTHS[k] + (k > 0 ? 4 : 0);
-		return new int[] {x, t[1] + 4, TOP_WIDTHS[i], 14};
+		for (int k = 0; k <= i; k++) x -= topWidth(k) + (k > 0 ? 4 : 0);
+		return new int[] {x, t[1] + 4, topWidth(i), 14};
 	}
 
 	private int[] findsButton() { return topButton(0); }
@@ -176,13 +196,20 @@ public class ClickGuiScreen extends Screen {
 		Render2D.gradientH(g, x + 8, y, w - 16, 1, ClientSettings.accent(), ClientSettings.accent2());
 		Render2D.gradientText(g, Hud.NAME, x + 9, y + 7, i -> ClientSettings.accentAt(i / 9f), true);
 		int sx = x + 14 + Render2D.width(Hud.NAME);
-		int lastButton = topButton(TOP_BUTTONS.length - 1)[0];
+		int lastButton = topButton(TOP_ICONS.length - 1)[0];
 		search.render(g, sx, y + 4, lastButton - 6 - sx, 14, Theme.FIELD);
-		for (int i = 0; i < TOP_BUTTONS.length; i++) {
+		for (int i = 0; i < TOP_ICONS.length; i++) {
 			int[] b = topButton(i);
 			boolean hover = Render2D.hovered(mx, my, b[0], b[1], b[2], b[3]);
 			Render2D.roundedRect(g, b[0], y + 4, b[2], b[3], 4, hover ? ClientSettings.accent() : ColorUtil.withAlpha(ClientSettings.accent(), 70));
-			Render2D.centeredText(g, TOP_BUTTONS[i], b[0] + b[2] / 2, y + 7, 0xFFFFFFFF, false);
+			Render2D.centeredText(g, compactTop() ? TOP_ICONS[i] : TOP_ICONS[i] + " " + TOP_LABELS[i], b[0] + b[2] / 2, y + 7, 0xFFFFFFFF, false);
+			int unread = dev.zero.hud.Notifications.unread();
+			if (i == 3 && unread > 0) { // unread alerts badge
+				String n = unread > 99 ? "99+" : String.valueOf(unread);
+				int bw = Render2D.width(n) + 6;
+				Render2D.roundedRect(g, b[0] + b[2] - bw / 2 - 2, y, bw, 9, 4, 0xFFFF4D6D);
+				Render2D.centeredText(g, n, b[0] + b[2] - 2, y + 1, 0xFFFFFFFF, false);
+			}
 		}
 	}
 
@@ -196,6 +223,10 @@ public class ClickGuiScreen extends Screen {
 				tip = "Profiles  §7Active: " + dev.zero.config.ConfigManager.activeProfile() + " • separate setups per server";
 			else if (Render2D.hovered(mx, my, topButton(2)[0], topButton(2)[1], topButton(2)[2], topButton(2)[3]))
 				tip = "HUD editor  §7Drag the HUD panels anywhere";
+			else if (Render2D.hovered(mx, my, topButton(3)[0], topButton(3)[1], topButton(3)[2], topButton(3)[3]))
+				tip = "Alerts  §7Everything ZER\u00D8 found, including what didn't pop up";
+			else if (Render2D.hovered(mx, my, topButton(4)[0], topButton(4)[1], topButton(4)[2], topButton(4)[3]))
+				tip = "Setup  §7One click: turn on the right modules for what you're doing";
 			else tip = "§7Left: toggle  •  Right: settings  •  Middle: bind  •  Drag headers  •  Scroll";
 		}
 		tip = Render2D.trim(tip, width - 30);
@@ -223,6 +254,15 @@ public class ClickGuiScreen extends Screen {
 		}
 		if (Render2D.hovered(mx, my, hb[0], hb[1], hb[2], hb[3])) {
 			minecraft.setScreen(new HudEditorScreen(null));
+			return true;
+		}
+		int[] ab = topButton(3), sb = topButton(4);
+		if (Render2D.hovered(mx, my, ab[0], ab[1], ab[2], ab[3])) {
+			minecraft.setScreen(new AlertsScreen(this));
+			return true;
+		}
+		if (Render2D.hovered(mx, my, sb[0], sb[1], sb[2], sb[3])) {
+			minecraft.setScreen(new SetupScreen(this));
 			return true;
 		}
 		if (Render2D.hovered(mx, my, t[0], t[1], t[2], t[3])) {

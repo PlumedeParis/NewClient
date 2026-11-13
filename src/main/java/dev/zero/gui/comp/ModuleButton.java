@@ -28,8 +28,21 @@ public class ModuleButton extends Comp {
 
 	public ModuleButton(Module module) {
 		this.module = module;
-		for (Setting<?> s : module.getSettings()) children.add(SettingComp.of(s));
+		children.add(new DescComp(module.getDescription()));
+		List<Comp> colors = new ArrayList<>();
+		for (Setting<?> s : module.getSettings()) {
+			if (s instanceof dev.zero.setting.ColorSetting) colors.add(SettingComp.of(s));
+			else children.add(SettingComp.of(s));
+		}
+		// several colors fold into one "Colors" group so the list stays short
+		if (colors.size() >= 2) children.add(new SectionComp("Colors", colors, false));
+		else children.addAll(colors);
 		children.add(new KeybindComp(module.keybind));
+		if (!module.getSettings().isEmpty())
+			children.add(new ButtonComp(new dev.zero.setting.ButtonSetting("Reset", "Put every setting of this module back to its default", "\u21BA Reset to defaults", () -> {
+				for (Setting<?> s : module.getSettings()) if (!(s instanceof dev.zero.setting.ButtonSetting)) s.reset();
+				ConfigManager.markDirty();
+			})));
 		enabledAnim = new Anim(module.isEnabled() ? 1 : 0, 12);
 		sw = new Switch(module.isEnabled());
 	}
@@ -68,9 +81,10 @@ public class ModuleButton extends Comp {
 		int textColor = ColorUtil.lerp(Theme.SUBTEXT, Theme.TEXT, Math.max(on, hv * 0.6f));
 		Render2D.text(g, module.getName(), x + 7 + (int) (2 * hv), y + 5, textColor, false);
 		sw.render(g, x + w - 22, y + 5, module.isEnabled());
+		if (hv > 0.01f || expanded) Render2D.text(g, expanded ? "\u2013" : "\u203A", x + w - 30, y + 5, ColorUtil.withAlpha(Theme.SUBTEXT, (int) (255 * Math.max(hv, expanded ? 1 : 0))), false);
 		if (module.keybind.isBound()) {
 			String k = module.keybind.display();
-			Render2D.text(g, k, x + w - 26 - Render2D.width(k), y + 5, Theme.MUTED, false);
+			Render2D.text(g, k, x + w - 34 - Render2D.width(k), y + 5, Theme.MUTED, false);
 		}
 
 		float e = expand.getF();

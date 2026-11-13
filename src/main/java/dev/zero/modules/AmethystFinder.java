@@ -56,7 +56,7 @@ public class AmethystFinder extends ChunkFinderModule<AmethystFinder.ChunkBuds> 
 	private boolean changed;
 
 	public AmethystFinder() {
-		super("AmethystFinder", "Highlights geodes grown by long chunk loading (a base is near)", Category.HUNT);
+		super("AmethystFinder", "Highlights geodes grown by long chunk loading (a base is near)", Category.SIGNS);
 	}
 
 	private void markChanged() { changed = true; }

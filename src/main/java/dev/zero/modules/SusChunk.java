@@ -415,12 +415,13 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		if (save.get()) FindsStore.add(new Find(Kind.SUS, f.getX(), f.getY(), f.getZ(), dim, reasons, System.currentTimeMillis()), true);
 		if (BaseRadar.quietMode()) return;
 		if (notify.get()) {
-			Notifications.push("Sus chunk " + Math.round(r.score) + "pts", WorldUtil.fmt(f) + "  •  " + reasons, Notifications.Type.ALERT, 6000);
-			ChatUtil.info(Component.literal("Sus chunk ").withStyle(s -> s.withColor(Kind.SUS.color & 0xFFFFFF).withBold(true))
+			if (r.base >= 12) Notifications.push("Hidden base? " + Math.round(r.score) + " pts", WorldUtil.fmt(f) + "  •  " + reasons, Notifications.Type.ALERT, 6000);
+			else Notifications.sign("Activity " + Math.round(r.score) + " pts", WorldUtil.fmt(f) + "  •  " + reasons, Notifications.Type.ALERT, 6000);
+			ChatUtil.alert(Component.literal("Sus chunk ").withStyle(s -> s.withColor(Kind.SUS.color & 0xFFFFFF).withBold(true))
 				.append(Component.literal("at " + WorldUtil.fmt(f) + " ").withStyle(ChatFormatting.WHITE))
 				.append(Component.literal("(" + reasons + ")").withStyle(ChatFormatting.GRAY)));
 		}
-		if (sound.get()) Sounds.alert();
+		if (sound.get() && (r.base >= 12 || Notifications.signSound())) Sounds.alert();
 	}
 
 	private static String reasons(Result r) {

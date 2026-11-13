@@ -40,6 +40,8 @@ public class Panel {
 		return h;
 	}
 
+	int fullHeight() { return HEADER + (collapsed ? 0 : contentHeight() + 4); }
+
 	boolean hasVisible() {
 		for (Comp c : comps) if (c.visible()) return true;
 		return false;

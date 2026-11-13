@@ -47,7 +47,7 @@ public class Crosshair extends Module {
 	private final BoolSetting attackIndicator = add(new BoolSetting("Attack Indicator", "Cooldown bar under the crosshair", true));
 
 	public Crosshair() {
-		super("Crosshair", "Custom crosshair with a pixel editor", Category.RENDER);
+		super("Crosshair", "Custom crosshair with a pixel editor", Category.MISC);
 	}
 
 	private static boolean[] gapCross() {

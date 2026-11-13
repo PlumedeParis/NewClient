@@ -44,7 +44,7 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 	public record Passages(List<Segment> segments) {}
 
 	public TunnelFinder() {
-		super("TunnelFinder", "Player-dug shafts, 1x2 tunnels and staircases", Category.HUNT);
+		super("TunnelFinder", "Player-dug shafts, 1x2 tunnels and staircases", Category.SIGNS);
 	}
 
 	@Override

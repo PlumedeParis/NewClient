@@ -41,7 +41,7 @@ public class GrowthFinder extends ChunkFinderModule<GrowthFinder.Growth> impleme
 	private static final Set<Block> KELP = Set.of(Blocks.KELP);
 
 	public GrowthFinder() {
-		super("GrowthFinder", "Kelp grown past its natural age = chunk loaded for long", Category.HUNT);
+		super("GrowthFinder", "Kelp grown past its natural age = chunk loaded for long", Category.SIGNS);
 	}
 
 	@Override

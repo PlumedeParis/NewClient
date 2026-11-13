@@ -60,7 +60,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 	// ---- Settings -------------------------------------------------------------------------
 	private final NumberSetting baseScore = add(new NumberSetting("Base Score", "Score needed to flag a chunk as a base", 40, 10, 200, 1)).onChange(this::reclassifyAll);
 	private final NumberSetting stashSize = add(new NumberSetting("Stash Size", "Storage blocks in one chunk to flag a stash", 8, 3, 64, 1)).onChange(this::reclassifyAll);
-	private final BoolSetting possible = add(new BoolSetting("Show Possible", "Also show weak matches (half the base score)", true)).onChange(this::reclassifyAll);
+	private final BoolSetting possible = add(new BoolSetting("Show Possible", "Also show weak matches (half the base score, or not enough different kinds of evidence)", false)).onChange(this::reclassifyAll);
 	private final BoolSetting countEntities = add(new BoolSetting("Entities", "Count item frames, armor stands, chest boats...", true));
 	private final BoolSetting filterStructures = add(new BoolSetting("Filter Structures", "Ignore natural structures (villages, dungeons, bastions...)", true)).onChange(this::rescan);
 	private final BoolSetting highlightChunks = add(new BoolSetting("Chunk Boxes", "Box around the detected blocks of each chunk", true));
@@ -97,7 +97,31 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 	/** Blocks whose mere presence identifies a natural structure. */
 	private static final Set<Block> MARKERS = Set.of(Blocks.BELL, Blocks.SPAWNER, Blocks.GILDED_BLACKSTONE, Blocks.REINFORCED_DEEPSLATE,
 		Blocks.SCULK_SHRIEKER, Blocks.VAULT, Blocks.TRIAL_SPAWNER, Blocks.END_PORTAL_FRAME, Blocks.PURPUR_BLOCK, Blocks.PURPUR_PILLAR,
-		Blocks.CRYING_OBSIDIAN, Blocks.NETHER_BRICKS, Blocks.MOSSY_COBBLESTONE, Blocks.CHISELED_SANDSTONE, Blocks.SUSPICIOUS_SAND, Blocks.SUSPICIOUS_GRAVEL);
+		Blocks.CRYING_OBSIDIAN, Blocks.NETHER_BRICKS, Blocks.MOSSY_COBBLESTONE, Blocks.CHISELED_SANDSTONE, Blocks.SUSPICIOUS_SAND, Blocks.SUSPICIOUS_GRAVEL,
+		Blocks.INFESTED_STONE_BRICKS, Blocks.INFESTED_MOSSY_STONE_BRICKS, Blocks.INFESTED_CRACKED_STONE_BRICKS, Blocks.CHISELED_STONE_BRICKS,
+		Blocks.POLISHED_BLACKSTONE_BRICKS, Blocks.SCULK_CATALYST, Blocks.CHISELED_TUFF, Blocks.CHISELED_TUFF_BRICKS, Blocks.TUFF_BRICKS, Blocks.COBWEB);
+
+	/** Chunks holding a village bell / another natural structure: their neighbours are judged as part of it. */
+	private final LongOpenHashSet villageChunks = new LongOpenHashSet();
+	private final LongOpenHashSet structureChunks = new LongOpenHashSet();
+
+	private static boolean near(LongOpenHashSet set, ChunkPos p, int radius) {
+		if (set.isEmpty()) return false;
+		for (int dx = -radius; dx <= radius; dx++)
+			for (int dz = -radius; dz <= radius; dz++)
+				if (set.contains(ChunkPos.asLong(p.x + dx, p.z + dz))) return true;
+		return false;
+	}
+
+	private void flag(LongOpenHashSet set, ChunkPos p, boolean on, int radius) {
+		boolean was = set.contains(p.toLong());
+		if (on == was) return;
+		if (on) set.add(p.toLong()); else set.remove(p.toLong());
+		// the neighbours were judged without knowing: look at them again
+		for (int dx = -radius; dx <= radius; dx++)
+			for (int dz = -radius; dz <= radius; dz++)
+				if (dx != 0 || dz != 0) dirty.add(ChunkPos.asLong(p.x + dx, p.z + dz));
+	}
 
 	static {
 		for (Block b : BuiltInRegistries.BLOCK) {
@@ -152,6 +176,9 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		BlockPos center;
 		Kind kind;
 
+		boolean strong;
+		int kinds;
+
 		float score() { return blockScore + entityScore; }
 		int storageTotal() { return storage + entityStorage; }
 	}
@@ -168,6 +195,12 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 
 	@Override
 	public String getInfo() { return foundCount > 0 ? String.valueOf(foundCount) : null; }
+
+	/** "BASE", "STASH", "POSSIBLE" or null for a chunk (in-game test). */
+	public String kindAt(ChunkPos pos) {
+		ChunkResult r = results.get(pos.toLong());
+		return r == null || r.kind == null ? null : r.kind.name();
+	}
 
 	@Override
 	protected void onEnable() {
@@ -203,6 +236,14 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		}
 
 		long key = chunk.getPos().toLong();
+		ChunkPos cpos = chunk.getPos();
+		boolean filterOn = filterStructures.get();
+		flag(villageChunks, cpos, filterOn && raw.containsKey(Blocks.BELL), 3);
+		boolean ownStructure = false;
+		for (Block m : MARKERS) if (m != Blocks.BELL && m != Blocks.CRYING_OBSIDIAN && m != Blocks.PURPUR_BLOCK && m != Blocks.PURPUR_PILLAR && m != Blocks.NETHER_BRICKS && raw.containsKey(m)) ownStructure = true;
+		if (end && (raw.containsKey(Blocks.PURPUR_BLOCK) || raw.containsKey(Blocks.PURPUR_PILLAR))) ownStructure = true;
+		if (nether && raw.containsKey(Blocks.NETHER_BRICKS)) ownStructure = true;
+		flag(structureChunks, cpos, filterOn && ownStructure, 1);
 		if (raw.isEmpty()) {
 			results.remove(key);
 			return;
@@ -210,7 +251,8 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 
 		// --- Natural structure detection ---
 		boolean filter = filterStructures.get();
-		boolean village = filter && raw.containsKey(Blocks.BELL);
+		// villages spread over many chunks around their bell; other structures cross chunk borders
+		boolean village = filter && near(villageChunks, cpos, 3);
 		boolean dungeonLike = filter && (raw.containsKey(Blocks.SPAWNER) || raw.containsKey(Blocks.TRIAL_SPAWNER) || raw.containsKey(Blocks.VAULT));
 		boolean bastion = filter && raw.containsKey(Blocks.GILDED_BLACKSTONE);
 		boolean ancientCity = filter && (raw.containsKey(Blocks.REINFORCED_DEEPSLATE) || raw.containsKey(Blocks.SCULK_SHRIEKER));
@@ -220,7 +262,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		boolean ruinedPortal = filter && raw.containsKey(Blocks.CRYING_OBSIDIAN) && raw.getInt(Blocks.CRYING_OBSIDIAN) < 6;
 		boolean temple = filter && (raw.containsKey(Blocks.CHISELED_SANDSTONE) || raw.containsKey(Blocks.MOSSY_COBBLESTONE)
 			|| raw.containsKey(Blocks.SUSPICIOUS_SAND) || raw.containsKey(Blocks.SUSPICIOUS_GRAVEL));
-		boolean structure = dungeonLike || bastion || ancientCity || stronghold || endCity || fortress || ruinedPortal || temple;
+		boolean structure = dungeonLike || bastion || ancientCity || stronghold || endCity || fortress || ruinedPortal || temple || (filter && near(structureChunks, cpos, 1));
 
 		ChunkResult r = new ChunkResult();
 		for (var e : raw.reference2IntEntrySet()) {
@@ -243,6 +285,14 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 			r.blockScore += Math.min(n, rule.cap) * rule.weight;
 			r.counts.addTo(rule.label, n);
 			if (rule.has(STORAGE)) r.storage += n;
+			if (rule.has(STRONG)) r.strong = true;
+		}
+		r.kinds = r.counts.size();
+		// One to three loose chests and nothing else is loot (shipwreck, buried treasure, ruined portal, igloo...), not a base.
+		if (filter && !r.strong && r.storage <= 3) {
+			boolean onlyLoot = true;
+			for (String label : r.counts.keySet()) if (!label.equals("Chest") && !label.equals("Barrel") && !label.equals("Obsidian")) onlyLoot = false;
+			if (onlyLoot) r.counts.clear();
 		}
 
 		if (r.counts.isEmpty()) {
@@ -266,6 +316,27 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		}
 		results.put(key, r);
 		classify(key, r);
+		// a base often straddles chunk borders: its neighbours are re-judged with this chunk's evidence
+		for (int dx = -1; dx <= 1; dx++)
+			for (int dz = -1; dz <= 1; dz++) {
+				if (dx == 0 && dz == 0) continue;
+				long nk = ChunkPos.asLong(cpos.x + dx, cpos.z + dz);
+				ChunkResult nr = results.get(nk);
+				if (nr != null) classify(nk, nr);
+			}
+	}
+
+	/** Evidence in the 8 surrounding chunks counts for 60%: bases are bigger than one chunk. */
+	private float neighbourBonus(long key) {
+		int cx = ChunkPos.getX(key), cz = ChunkPos.getZ(key);
+		float sum = 0;
+		for (int dx = -1; dx <= 1; dx++)
+			for (int dz = -1; dz <= 1; dz++) {
+				if (dx == 0 && dz == 0) continue;
+				ChunkResult n = results.get(ChunkPos.asLong(cx + dx, cz + dz));
+				if (n != null) sum += n.score();
+			}
+		return Math.min(sum * 0.6f, 45);
 	}
 
 	private static void computeBounds(ChunkResult r, ChunkPos pos) {
@@ -302,12 +373,16 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 	public void onChunkUnload(ChunkPos pos) {
 		results.remove(pos.toLong());
 		entityScores.remove(pos.toLong());
+		villageChunks.remove(pos.toLong());
+		structureChunks.remove(pos.toLong());
 	}
 
 	@Override
 	public void clearAll() {
 		results.clear();
 		entityScores.clear();
+		villageChunks.clear();
+		structureChunks.clear();
 		dirty.clear();
 		foundCount = 0;
 	}
@@ -382,9 +457,12 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 
 	private void classify(long key, ChunkResult r) {
 		Kind kind = null;
-		float score = r.score();
+		float own = r.score();
+		float score = own >= 10 ? own + neighbourBonus(key) : own;
+		// A base needs variety: one strong player-only block, or at least 3 different kinds of evidence.
+		boolean varied = r.strong || r.kinds >= 3 || r.entityScore >= 12;
 		if (r.storageTotal() >= stashSize.getInt()) kind = Kind.STASH;
-		else if (score >= baseScore.get()) kind = Kind.BASE;
+		else if (score >= baseScore.get() && varied) kind = Kind.BASE;
 		else if (possible.get() && score >= baseScore.get() / 2) kind = Kind.POSSIBLE;
 		Kind previous = r.kind;
 		r.kind = kind;
@@ -405,7 +483,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		if (BaseRadar.quietMode()) return;
 		if (notify.get()) Notifications.push(kind.title + " found!", WorldUtil.fmt(c) + "  •  " + summary, Notifications.Type.FOUND, 7000);
 		if (chat.get()) {
-			ChatUtil.info(Component.literal(kind.title + " ").withStyle(s -> s.withColor(col(kind) & 0xFFFFFF).withBold(true))
+			ChatUtil.alert(Component.literal(kind.title + " ").withStyle(s -> s.withColor(col(kind) & 0xFFFFFF).withBold(true))
 				.append(Component.literal("at " + WorldUtil.fmt(c) + " ").withStyle(ChatFormatting.WHITE))
 				.append(Component.literal("(" + summary + ")").withStyle(ChatFormatting.GRAY)));
 		}

@@ -181,7 +181,7 @@ public class PlayerDetector extends Module {
 
 	private void onLeave(Tracked t, long now) {
 		if (!leaveAlerts.get() || isFriend(t.name)) return;
-		if (toast.get()) Notifications.push(t.name + " left range", fmt(t.lastPos), Notifications.Type.INFO, 3000);
+		if (toast.get()) Notifications.minor(t.name + " left range", fmt(t.lastPos), Notifications.Type.INFO, 3000);
 	}
 
 	private void checkTabList() {
@@ -192,12 +192,12 @@ public class PlayerDetector extends Module {
 		if (lastTab != null && joinAlerts.get() != JoinAlerts.OFF) {
 			for (Map.Entry<UUID, String> e : now.entrySet()) {
 				if (!lastTab.contains(e.getKey()) && (joinAlerts.get() == JoinAlerts.ALL || isFriend(e.getValue())))
-					Notifications.push(e.getValue() + " joined", "Server", Notifications.Type.INFO, 3500);
+					Notifications.minor(e.getValue() + " joined", "Server", Notifications.Type.INFO, 3500);
 			}
 			if (lastNames != null) {
 				for (Map.Entry<UUID, String> e : lastNames.entrySet()) {
 					if (!now.containsKey(e.getKey()) && (joinAlerts.get() == JoinAlerts.ALL || isFriend(e.getValue())))
-						Notifications.push(e.getValue() + " left", "Server", Notifications.Type.INFO, 3500);
+						Notifications.minor(e.getValue() + " left", "Server", Notifications.Type.INFO, 3500);
 				}
 			}
 		}

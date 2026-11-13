@@ -33,7 +33,7 @@ public class Freecam extends Module {
 	private float lastHealth;
 
 	public Freecam() {
-		super("Freecam", "Move the camera freely while your player stays still", Category.RENDER);
+		super("Freecam", "Move the camera freely while your player stays still", Category.MISC);
 	}
 
 	@Override

@@ -293,7 +293,7 @@ public class DonutHunter extends Module {
 				int t = nearTicks.addTo(c, 10) + 10;
 				if (t >= 60) {
 					visited.add(c);
-					Notifications.push("DonutHunter", "Lead checked \u2714", Notifications.Type.INFO);
+					Notifications.minor("DonutHunter", "Lead checked \u2714", Notifications.Type.INFO, 2500);
 					continue;
 				}
 			}

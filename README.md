@@ -81,6 +81,20 @@ X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **S
 
 ## Interface
 
+### 2.0: quieter, simpler, more accurate
+
+* **Alerts** (Client panel → Alerts): **Everything** = a pop-up for every sign; **Important** (default) = bases, players and leads pop up, small signs of life (kelp, tunnels, geodes, deepslate...) merge into one rolling "Signs of life ×6" pop-up; **Minimal** = only bases, players and leads. At most 3 pop-ups on screen, sounds are spaced out (never a burst), module toggle pop-ups and chat lines are off by default.
+* **Alerts history** (top bar `!`): everything ZERØ found, including what did not pop up, newest first, with an unread badge. Click a line to copy it.
+* **Setup** (top bar `✦`): one click turns on exactly the right modules: DonutSMP hunt, 2b2t base hunt, Mining, Looting, Everything off.
+* **Organised GUI**: categories Render / World / Hunt (all-in-one tools) / Signs (evidence finders) / Misc; panels pack themselves into tidy columns; each module's settings start with what it does, colors fold into a "Colors" group, and end with "Reset to defaults". The Client panel is grouped into General / Alerts / Look / HUD / Performance.
+* **Hide All key** (Client → General): hides everything ZERØ draws until pressed again (modules keep running).
+* **BaseFinder accuracy**: villages are recognised up to 3 chunks around their bell and other structures across chunk borders; 1 to 3 loose chests (shipwrecks, buried treasure, ruined portals, igloos) are ignored; a base needs varied evidence (a player-only block or 3+ kinds); evidence in neighbouring chunks counts, so a base cut by a chunk border is still found. Weak "possible" matches are off by default.
+
+| ClickGUI | Setup | Alerts history |
+|---|---|---|
+| ![](docs/gui_v2.png) | ![](docs/setup.png) | ![](docs/alerts_screen.png) |
+
+
 ### Intro
 
 The first time you open the GUI after joining a world or a server, ZERØ plays a 6-second motion-graphics intro: letters flying in with motion trails and glow, a light slash through the Ø, a shine sweep, "CLIENT" tracking in, cinematic frame, "Development made by PlumeTheCat & ClaudeAI", a loading sequence, then the screen splits open on the GUI. All text is rasterised from a vector font (Montserrat, OFL) at your real screen resolution, so it is sharp at any size. Click / any key skips to the reveal, Esc skips it all. Client panel → Intro: once per join (default), every time, or off.

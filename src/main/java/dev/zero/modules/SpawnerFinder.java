@@ -63,7 +63,7 @@ public class SpawnerFinder extends ChunkFinderModule<SpawnerFinder.Spawners> imp
 	private int tick;
 
 	public SpawnerFinder() {
-		super("SpawnerFinder", "Player-placed spawners and mob farms", Category.HUNT);
+		super("SpawnerFinder", "Player-placed spawners and mob farms", Category.SIGNS);
 	}
 
 	@Override

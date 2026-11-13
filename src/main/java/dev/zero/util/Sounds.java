@@ -14,9 +14,19 @@ public final class Sounds {
 		Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sound.value(), pitch, volume));
 	}
 
-	public static void ping() { play(SoundEvents.NOTE_BLOCK_PLING, 1.6f, 0.8f); }
+	private static long lastAlertSound;
 
-	public static void alert() { play(SoundEvents.NOTE_BLOCK_BELL, 0.9f, 1f); }
+	/** Alert sounds are spaced out: several finds at once make one sound, not a burst. */
+	private static boolean spaced() {
+		long now = System.currentTimeMillis();
+		if (now - lastAlertSound < 1200 || !dev.zero.config.ClientSettings.ALERT_SOUNDS.get()) return false;
+		lastAlertSound = now;
+		return true;
+	}
+
+	public static void ping() { if (spaced()) play(SoundEvents.NOTE_BLOCK_PLING, 1.6f, 0.8f); }
+
+	public static void alert() { if (spaced()) play(SoundEvents.NOTE_BLOCK_BELL, 0.9f, 1f); }
 
 	public static void click() { play(SoundEvents.UI_BUTTON_CLICK, 1.4f, 0.25f); }
 }

@@ -26,6 +26,11 @@ public final class ChatUtil {
 		mc.gui.getChat().addMessage(prefix().append(message));
 	}
 
+	/** Find / alert lines: only when "Chat Alerts" is on (off by default, the Alerts screen keeps the history). */
+	public static void alert(Component message) {
+		if (dev.zero.config.ClientSettings.CHAT_ALERTS.get()) info(message);
+	}
+
 	public static void info(String message) {
 		info(Component.literal(message).withStyle(ChatFormatting.GRAY));
 	}

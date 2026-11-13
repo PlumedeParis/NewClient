@@ -29,10 +29,35 @@ public final class Notifications {
 		}
 	}
 
+	/** How many pop-ups you get. Everything is always kept in the alert history. */
+	public enum Level { EVERYTHING, IMPORTANT, MINIMAL }
+
+	/** One line of the alert history (Alerts screen). */
+	public record Entry(long time, String title, String message, Type type) {}
+
+	private static final java.util.ArrayDeque<Entry> LOG = new java.util.ArrayDeque<>();
+	private static int unread;
+
+	public static synchronized List<Entry> history() { return new ArrayList<>(LOG); }
+
+	public static synchronized int unread() { return unread; }
+
+	public static synchronized void markRead() { unread = 0; }
+
+	public static synchronized void clearHistory() { LOG.clear(); unread = 0; }
+
+	private static synchronized void log(String title, String message, Type type) {
+		LOG.addFirst(new Entry(System.currentTimeMillis(), title, message, type));
+		while (LOG.size() > 200) LOG.removeLast();
+		unread++;
+	}
+
 	private static final class Toast {
-		final String title, message;
+		String title, message;
 		final Type type;
-		final long created = System.currentTimeMillis();
+		long created = System.currentTimeMillis();
+		String group;
+		int count = 1;
 		final long duration;
 		final Anim slide = new Anim(0, 14);
 		final Anim y = new Anim(-1, 16);
@@ -48,7 +73,50 @@ public final class Notifications {
 	}
 
 	private static final List<Toast> TOASTS = new ArrayList<>();
-	private static final int MAX = 6;
+
+	private static Level level() { return ClientSettings.ALERTS.get(); }
+
+	/**
+	 * A small "sign of life" (grown kelp, a tunnel, a geode...). Always logged; as pop-ups they are
+	 * shown one by one (Everything), merged into a single rolling toast (Important) or not at all (Minimal).
+	 */
+	public static synchronized void sign(String title, String message, Type type, long durationMs) {
+		log(title, message, type);
+		if (!ClientSettings.NOTIFICATIONS.get()) return;
+		switch (level()) {
+			case EVERYTHING -> show(title, message, type, durationMs);
+			case IMPORTANT -> {
+				for (Toast t : TOASTS) {
+					if ("signs".equals(t.group) && !t.leaving) {
+						t.count++;
+						t.title = "Signs of life \u00D7" + t.count;
+						t.message = "Latest: " + title + "  \u2022  " + message;
+						t.created = System.currentTimeMillis();
+						return;
+					}
+				}
+				show(title, message, type, durationMs);
+				TOASTS.get(TOASTS.size() - 1).group = "signs";
+			}
+			case MINIMAL -> {}
+		}
+	}
+
+	/** Should a sign-of-life sound play now? (never a burst of pings) */
+	public static synchronized boolean signSound() {
+		long now = System.currentTimeMillis();
+		if (level() == Level.MINIMAL || now - lastSignSound < 8000) return false;
+		lastSignSound = now;
+		return true;
+	}
+
+	private static long lastSignSound;
+
+	/** Background chatter (someone joined the server, a player left range...). Logged; pop-up only on Everything. */
+	public static synchronized void minor(String title, String message, Type type, long durationMs) {
+		log(title, message, type);
+		if (ClientSettings.NOTIFICATIONS.get() && level() == Level.EVERYTHING) show(title, message, type, durationMs);
+	}
 
 	private Notifications() {}
 
@@ -59,12 +127,23 @@ public final class Notifications {
 	}
 
 	public static synchronized void push(String title, String message, Type type, long durationMs) {
+		boolean toggle = type == Type.ENABLED || type == Type.DISABLED;
+		if (!toggle && durationMs >= 3000) log(title, message, type); // real alerts, not quick confirmations
 		if (!ClientSettings.NOTIFICATIONS.get()) return;
+		show(title, message, type, durationMs);
+	}
+
+	private static void show(String title, String message, Type type, long durationMs) {
 		// Collapse spammy duplicates of a toggle.
 		TOASTS.removeIf(t -> t.title.equals(title) && (t.type == Type.ENABLED || t.type == Type.DISABLED) && (type == Type.ENABLED || type == Type.DISABLED));
 		TOASTS.add(new Toast(title, message, type, durationMs));
-		while (TOASTS.size() > MAX) TOASTS.remove(0);
+		while (TOASTS.size() > ClientSettings.MAX_TOASTS.getInt()) TOASTS.remove(0);
 	}
+
+	/** Toasts currently on screen (in-game test). */
+	public static synchronized int visible() { return TOASTS.size(); }
+
+	public static synchronized void clearToasts() { TOASTS.clear(); }
 
 	public static synchronized void render(GuiGraphics g) {
 		int sw = g.guiWidth(), sh = g.guiHeight();

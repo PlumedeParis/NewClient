@@ -61,7 +61,7 @@ public final class Hud {
 
 	public static void render(GuiGraphics g, DeltaTracker delta) {
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.options.hideGui || mc.player == null) return;
+		if (mc.options.hideGui || mc.player == null || dev.zero.ZeroClient.hidden()) return;
 		float pt = delta.getGameTimeDeltaPartialTick(false);
 		screenW = g.guiWidth();
 		screenH = g.guiHeight();
