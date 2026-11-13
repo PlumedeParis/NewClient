@@ -55,13 +55,19 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 	}
 
 	@Override
-	protected boolean relevant(BlockState o, BlockState n) { return o.isAir() != n.isAir(); }
+	protected boolean relevant(BlockState o, BlockState n) { return o.blocksMotion() != n.blocksMotion(); } // not grass, flowers, water, snow
 
 	// 0 open, 1 solid, 2 fluid / other
+	private static final it.unimi.dsi.fastutil.objects.Reference2ByteOpenHashMap<BlockState> CELLS = new it.unimi.dsi.fastutil.objects.Reference2ByteOpenHashMap<>();
+	static { CELLS.defaultReturnValue((byte) -1); }
+
+	/** Open / solid / fluid, remembered per block state (the same few states repeat millions of times). */
 	private static byte cell(BlockState s) {
-		if (!s.getFluidState().isEmpty()) return 2;
-		if (s.isAir() || !s.blocksMotion()) return 0;
-		return 1;
+		byte c = CELLS.getByte(s);
+		if (c >= 0) return c;
+		c = !s.getFluidState().isEmpty() ? (byte) 2 : s.isAir() || !s.blocksMotion() ? (byte) 0 : (byte) 1;
+		CELLS.put(s, c);
+		return c;
 	}
 
 	@Override
@@ -80,6 +86,13 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 				anyAir = true;
 				continue; // stays 0 = open
 			}
+			// a section with no open block at all (solid rock) cannot hold a passage: fill it in one go
+			if (!s.maybeHas(st -> cell(st) != 1)) {
+				for (int y = 0; y < 16; y++)
+					for (int z = 0; z < 16; z++) java.util.Arrays.fill(g, idx(1, sy + y, z + 1), idx(1, sy + y, z + 1) + 16, (byte) 1);
+				continue;
+			}
+			anyAir = true;
 			for (int y = 0; y < 16; y++)
 				for (int z = 0; z < 16; z++)
 					for (int x = 0; x < 16; x++) g[idx(x + 1, sy + y, z + 1)] = cell(s.getBlockState(x, y, z));
@@ -100,10 +113,14 @@ public class TunnelFinder extends ChunkFinderModule<TunnelFinder.Passages> imple
 		for (int z = 0; z < 16; z++)
 			for (int x = 0; x < 16; x++) surface[x + z * 16] = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - minY - 3;
 
+		// passages are only looked for under the surface: no need to walk the empty sky above it
+		int top = 0;
+		for (int v : surface) top = Math.max(top, v);
+		int scanH = Math.max(8, Math.min(height, top + 6));
 		List<Segment> segs = new ArrayList<>();
-		if (shafts.get()) findShafts(g, height, surface, bx, bz, minY, segs);
-		if (tunnels.get()) findTunnels(g, height, surface, bx, bz, minY, segs);
-		if (stairs.get()) findStairs(g, height, surface, bx, bz, minY, segs);
+		if (shafts.get()) findShafts(g, scanH, surface, bx, bz, minY, segs);
+		if (tunnels.get()) findTunnels(g, scanH, surface, bx, bz, minY, segs);
+		if (stairs.get()) findStairs(g, scanH, surface, bx, bz, minY, segs);
 		if (segs.isEmpty()) return null;
 		if (segs.size() >= alertSegments.getInt()) {
 			AABB b = segs.get(0).box();

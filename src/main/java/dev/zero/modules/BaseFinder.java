@@ -120,7 +120,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 		// the neighbours were judged without knowing: look at them again
 		for (int dx = -radius; dx <= radius; dx++)
 			for (int dz = -radius; dz <= radius; dz++)
-				if (dx != 0 || dz != 0) dirty.add(ChunkPos.asLong(p.x + dx, p.z + dz));
+				if (dx != 0 || dz != 0) dev.zero.scan.ChunkScanner.markDirty(this, ChunkPos.asLong(p.x + dx, p.z + dz));
 	}
 
 	static {
@@ -367,7 +367,7 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 	@Override
 	public void onBlockChanged(LevelChunk chunk, BlockPos pos, BlockState oldState, BlockState newState) {
 		if (RULES.containsKey(oldState.getBlock()) || RULES.containsKey(newState.getBlock()) || MARKERS.contains(newState.getBlock()))
-			dirty.add(chunk.getPos().toLong());
+			dev.zero.scan.ChunkScanner.markDirty(this, chunk.getPos().toLong());
 	}
 
 	@Override
@@ -398,13 +398,6 @@ public class BaseFinder extends ScanningModule implements HuntTarget.Provider {
 	@Override
 	public void onTick() {
 		tickCounter++;
-		if (tickCounter % 10 == 0 && !dirty.isEmpty()) {
-			for (long key : dirty.toLongArray()) {
-				LevelChunk c = mc.level.getChunkSource().getChunk(ChunkPos.getX(key), ChunkPos.getZ(key), net.minecraft.world.level.chunk.status.ChunkStatus.FULL, false);
-				if (c != null) scanChunk(c);
-			}
-			dirty.clear();
-		}
 		if (tickCounter % 20 == 0 && countEntities.get()) scanEntities();
 	}
 

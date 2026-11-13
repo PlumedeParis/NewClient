@@ -261,10 +261,10 @@ public class SafeMiner extends Module {
 			Notifications.push("SafeMiner", "Skipped, routing to the next ore", Notifications.Type.INFO);
 		}
 		keyHeld = down;
-		if (testTargets == null && source.get() != Source.SEED && (tick % 40 == 1 || visible.isEmpty() && tick % 10 == 1)) scanVisible(wanted());
+		if (testTargets == null && source.get() != Source.SEED && (tick % 100 == 1 || visible.isEmpty() && tick % 40 == 1)) scanVisible(wanted());
 
 		if (search != null) {
-			Search.Result r = search.run(6000);
+			Search.Result r = search.run(700_000L); // at most 0.7 ms of path search per tick
 			if (r == Search.Result.RUNNING) return;
 			if (r == Search.Result.FOUND) {
 				route = search.path();
@@ -278,6 +278,7 @@ public class SafeMiner extends Module {
 				route = List.of();
 				goal = null;
 				status = search.targets == 0 ? noTargetsText() : "No safe route to the " + search.targets + " ore(s) in range";
+				sinceSearch = -160; // nothing reachable right now: try again in 10 s, not at once
 			}
 			search = null;
 			return;
@@ -374,7 +375,7 @@ public class SafeMiner extends Module {
 			this.start = start;
 			this.targets = ts.size();
 			this.list = ts;
-			this.limit = 120_000;
+			this.limit = 50_000;
 			for (Target t : ts) {
 				for (int d = 0; d < 4; d++) {
 					// standing next to the ore (ore at feet or head height), arriving in any direction except straight at it
@@ -465,8 +466,10 @@ public class SafeMiner extends Module {
 			return c == SOLID;
 		}
 
-		Result run(int budget) {
-			for (int i = 0; i < budget; i++) {
+		Result run(long budgetNanos) {
+			long t0 = System.nanoTime();
+			for (int i = 0; ; i++) {
+				if ((i & 31) == 31 && System.nanoTime() - t0 > budgetNanos) break;
 				Node n = open.poll();
 				if (n == null) return Result.FAILED;
 				if (++expanded > limit) return Result.FAILED;
@@ -613,7 +616,16 @@ public class SafeMiner extends Module {
 		if (Render3D.look(ore)) Render3D.lookText(goal.block.getName().getString() + " · SafeMiner target", tc);
 	}
 
+	private int remainingCache, remainingTick = -1;
+
+	/** Blocks still to dig on the route; counted once per tick, not on every frame. */
 	private int remainingMine() {
+		if (remainingTick == tick) return remainingCache;
+		remainingTick = tick;
+		return remainingCache = countRemaining();
+	}
+
+	private int countRemaining() {
 		int n = 0;
 		for (int i = progress; i < route.size(); i++) for (BlockPos b : route.get(i).mine) if (!mc.level.getBlockState(b).isAir()) n++;
 		return n;

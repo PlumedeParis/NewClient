@@ -179,16 +179,17 @@ public class SeedOreFinder extends Module {
 			lastPredict = predict;
 		}
 		tick++;
-		if (tick % 5 == 0) refreshCache();
+		if (tick % 10 == 0) refreshCache();
+		verifySome();
 
 		ChunkPos center = mc.player.chunkPosition();
 		int r = radius.getInt();
 		if (predictor.pendingCount() < 6) {
 			int submitted = 0;
 			// Nearest chunks first.
-			for (int ring = 0; ring <= r && submitted < 3; ring++) {
-				for (int dx = -ring; dx <= ring && submitted < 3; dx++) {
-					for (int dz = -ring; dz <= ring && submitted < 3; dz++) {
+			for (int ring = 0; ring <= r && submitted < 1; ring++) {
+				for (int dx = -ring; dx <= ring && submitted < 1; dx++) {
+					for (int dz = -ring; dz <= ring && submitted < 1; dz++) {
 						if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
 						int cx = center.x + dx, cz = center.z + dz;
 						long key = ChunkPos.asLong(cx, cz);
@@ -206,7 +207,7 @@ public class SeedOreFinder extends Module {
 		if (tick % 40 == 0) {
 			// Forget far chunks.
 			predictor.results().keySet().removeIf(k -> Math.max(Math.abs(ChunkPos.getX(k) - center.x), Math.abs(ChunkPos.getZ(k) - center.z)) > r + 3);
-			verify();
+			verifyBiomes();
 		}
 	}
 
@@ -242,10 +243,20 @@ public class SeedOreFinder extends Module {
 	}
 
 	/** Compares predictions with what the client can actually see (exposed blocks only). */
-	private void verify() {
-		verifyBiomes();
-		for (OrePredictor.Result res : predictor.results().values()) {
-			if (!res.realTerrain()) continue;
+	private final java.util.ArrayDeque<OrePredictor.Result> verifyQueue = new java.util.ArrayDeque<>();
+
+	/** A few chunks of predictions per tick, round and round, instead of everything at once (no spikes). */
+	private void verifySome() {
+		if (verifyQueue.isEmpty()) {
+			verifyQueue.addAll(predictor.results().values());
+			if (verified.size() > 200_000) verified.clear();
+		}
+		for (int i = 0; i < 3 && !verifyQueue.isEmpty(); i++) verify(verifyQueue.poll());
+	}
+
+	private void verify(OrePredictor.Result res) {
+		{
+			if (!res.realTerrain()) return;
 			for (SeedWorld.Prediction p : res.predictions()) {
 				Integer prev = verified.get(p.pos());
 				if ((prev != null && prev != 1) || !mc.level.isLoaded(p.pos())) continue;
@@ -328,7 +339,8 @@ public class SeedOreFinder extends Module {
 				// your Block Colors choice tints the hologram; otherwise the real texture is shown as-is
 				int tint = BlockColors.isCustom(v.p.block()) ? ColorUtil.brighten(BlockColors.get(v.p.block()), 0.35f) & 0xFFFFFF : 0xFFFFFF;
 				Render3D.hologram(new AABB(v.p.pos()).deflate(0.02), sprite(v.p.block()), (a << 24) | tint);
-				Render3D.box(ob, 0, ColorUtil.withAlpha(c, (int) (200 * strength)), 1.2f, true);
+				// the colored outline only matters up close; far holograms are just the textured cube
+				if (v.dist < 40) Render3D.box(ob, 0, ColorUtil.withAlpha(c, (int) (200 * strength)), 1.2f, true);
 			}
 			if (style.get() != Style.HOLOGRAM) {
 				int fillA = (int) (55 * strength), lineA = (int) (230 * strength);

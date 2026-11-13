@@ -157,6 +157,14 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		return x < w || z < w || Math.abs(x - z) < w;
 	}
 
+	/** Blocks the analysis reads: anything else changing cannot change a chunk's verdict. */
+	private static boolean interesting(BlockState st) {
+		if (st.isAir()) return false;
+		Block b = st.getBlock();
+		return st.hasBlockEntity() || WORKSHOP.contains(b) || LIGHTS.contains(b) || STRUCTURE.contains(b) || RAILS.contains(b) || st.is(BlockTags.BEDS)
+			|| b == Blocks.NETHER_PORTAL || b instanceof CropBlock || b instanceof NetherWartBlock;
+	}
+
 	private boolean nearStructure(ChunkPos p) {
 		for (int dx = -1; dx <= 1; dx++)
 			for (int dz = -1; dz <= 1; dz++)
@@ -186,9 +194,13 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		int bx = cp.getMinBlockX(), bz = cp.getMinBlockZ();
 
 		// 0 = open (air / no collision), 1 = solid, 2 = fluid
-		byte[] cells = tunnels.get() ? new byte[height * 256] : null;
+		// the tunnel pass needs every block; it only counts in Activity mode, so Bases mode skips it
+		byte[] cells = tunnels.get() && mode.get() == Mode.ACTIVITY ? new byte[height * 256] : null;
+		// natural ground height per column, worked out only for the columns that need it
 		int[] ground = new int[256];
-		java.util.Arrays.fill(ground, Integer.MIN_VALUE);
+		java.util.Arrays.fill(ground, Integer.MAX_VALUE);
+		final boolean netherF = nether;
+		java.util.function.Predicate<BlockState> wanted = st -> interesting(st) || netherF && OVERWORLD_ONLY.contains(st.getBlock());
 		Reference2IntOpenHashMap<Block> counts = new Reference2IntOpenHashMap<>();
 		List<BlockPos> lightPositions = new ArrayList<>();
 		List<BlockPos> workshopPositions = new ArrayList<>();
@@ -199,6 +211,12 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 			LevelChunkSection s = sections[i];
 			int sy = chunk.getSectionYFromSectionIndex(i) << 4;
 			if (s == null || s.hasOnlyAir()) continue; // cells default to 0 (open)
+			// chunk age from the palettes alone (no need to read every block)
+			if (overworld && sy == 0 && s.maybeHas(st -> st.is(Blocks.DEEPSLATE) || st.is(Blocks.TUFF))) deepslateNearZero = true;
+			if (overworld && sy >= 0 && !copper && s.maybeHas(st -> st.is(Blocks.COPPER_ORE))) copper = true;
+			if (nether && !newNether && s.maybeHas(st -> NEW_NETHER.contains(st.getBlock()))) newNether = true;
+			// nothing the analysis reads in this 16x16x16 section: skip all 4096 blocks
+			if (cells == null && !s.maybeHas(wanted)) continue;
 			for (int y = 0; y < 16; y++)
 				for (int z = 0; z < 16; z++)
 					for (int x = 0; x < 16; x++) {
@@ -212,7 +230,6 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 							cells[((wy - minY) << 8) | (z << 4) | x] = c;
 						}
 						if (st.isAir()) continue;
-						if (terrain(st)) ground[(z << 4) | x] = wy;
 						Block b = st.getBlock();
 						if (STRUCTURE.contains(b)) {
 							structureHere = true;
@@ -250,7 +267,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		boolean wasStructure = structures.contains(key);
 		if (structureHere) structures.add(key); else structures.remove(key);
 		if (structureHere != wasStructure)
-			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (dx != 0 || dz != 0) dirty.add(ChunkPos.asLong(cp.x + dx, cp.z + dz));
+			for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (dx != 0 || dz != 0) dev.zero.scan.ChunkScanner.markDirty(this, ChunkPos.asLong(cp.x + dx, cp.z + dz));
 
 		if (onHighway(cp)) {
 			results.remove(key);
@@ -270,7 +287,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 				if (be instanceof ShulkerBoxBlockEntity) { shulkers++; at = p; continue; } // never natural
 				if (be instanceof EnderChestBlockEntity && !end) { enders++; at = p; continue; }
 				if (!(be instanceof ChestBlockEntity || be instanceof BarrelBlockEntity)) continue;
-				if (structure || under && !buried(p, ground, nether, end)) continue;
+				if (structure || under && !buried(chunk, p, ground, nether, end)) continue;
 				containers++;
 				if (at == null) at = p;
 			}
@@ -287,7 +304,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 			int n = 0;
 			BlockPos at = null;
 			for (BlockPos p : workshopPositions) {
-				if (under && !buried(p, ground, nether, end)) continue;
+				if (under && !buried(chunk, p, ground, nether, end)) continue;
 				BlockState st = chunk.getBlockState(p);
 				kinds.add(st.is(BlockTags.BEDS) ? Blocks.RED_BED : st.getBlock());
 				n++;
@@ -299,13 +316,14 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		// ---- Farms (grown crops; underground = lit farm) ----
 		if (farms.get() && !structure && !crops.isEmpty()) {
 			int buriedCrops = 0;
-			for (BlockPos p : crops) if (buried(p, ground, nether, end)) buriedCrops++;
+			for (BlockPos p : crops) if (buried(chunk, p, ground, nether, end)) buriedCrops++;
 			if (buriedCrops > 0) r.base("Underground farm", Math.min(buriedCrops, 25) * 0.8f, crops.get(0));
 			else if (!under) r.activity("Grown crops", Math.min(crops.size(), 30) * 0.3f, crops.get(0));
 		}
 
 		// ---- Tunnels ----
 		if (cells != null && !structure && !mineshaft) {
+			if (!nether) for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) groundAt(chunk, ground, lx, lz);
 			int rows = countTunnelRows(cells, height, nether, minY, bx, bz, ground, r);
 			if (rows > 0) r.activity("Dug tunnel", Math.min(rows, 6) * 5f, null);
 		}
@@ -314,7 +332,7 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 		if (lights.get() && !structure && !mineshaft) {
 			int n = 0;
 			BlockPos at = null;
-			for (BlockPos p : lightPositions) if (buried(p, ground, nether, end)) { n++; if (at == null) at = p; }
+			for (BlockPos p : lightPositions) if (buried(chunk, p, ground, nether, end)) { n++; if (at == null) at = p; }
 			if (n > 0) r.activity(n + " lights", Math.min(n, 10) * 1.5f, at);
 		}
 
@@ -343,11 +361,23 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 	}
 
 	/** Under at least 4 blocks of natural ground (the whole Nether below the roof counts). */
-	private static boolean buried(BlockPos p, int[] ground, boolean nether, boolean end) {
+	private static boolean buried(LevelChunk chunk, BlockPos p, int[] ground, boolean nether, boolean end) {
 		if (nether) return p.getY() < 123;
 		if (end) return false;
-		int g = ground[((p.getZ() & 15) << 4) | (p.getX() & 15)];
+		int g = groundAt(chunk, ground, p.getX() & 15, p.getZ() & 15);
 		return g != Integer.MIN_VALUE && p.getY() < g - 3;
+	}
+
+	/** Highest natural-terrain block of a column (cached per scan; Integer.MIN_VALUE = none). */
+	private static int groundAt(LevelChunk chunk, int[] ground, int lx, int lz) {
+		int i = (lz << 4) | lx;
+		if (ground[i] != Integer.MAX_VALUE) return ground[i];
+		BlockPos.MutableBlockPos m = new BlockPos.MutableBlockPos();
+		int bx = chunk.getPos().getMinBlockX() + lx, bz = chunk.getPos().getMinBlockZ() + lz;
+		for (int y = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, lx, lz); y >= chunk.getMinY(); y--) {
+			if (terrain(chunk.getBlockState(m.set(bx, y, bz)))) return ground[i] = y;
+		}
+		return ground[i] = Integer.MIN_VALUE;
 	}
 
 	/** Rows (along X and Z) containing a straight 1-wide, 2-high corridor with walls, floor and ceiling, under natural ground. */
@@ -437,18 +467,13 @@ public class SusChunk extends ScanningModule implements HuntTarget.Provider {
 
 	@Override
 	public void onBlockChanged(LevelChunk chunk, BlockPos pos, BlockState oldState, BlockState newState) {
-		dirty.add(chunk.getPos().toLong());
+		// only changes that can matter: base blocks, containers, lights, crops... (not grass, water, leaves)
+		if (interesting(oldState) || interesting(newState) || mode.get() == Mode.ACTIVITY && tunnels.get() && oldState.blocksMotion() != newState.blocksMotion())
+			dev.zero.scan.ChunkScanner.markDirty(this, chunk.getPos().toLong());
 	}
 
 	@Override
 	public void onTick() {
-		if (++tickCounter % 40 == 0 && !dirty.isEmpty()) {
-			for (long key : dirty.toLongArray()) {
-				LevelChunk c = mc.level.getChunkSource().getChunk(ChunkPos.getX(key), ChunkPos.getZ(key), ChunkStatus.FULL, false);
-				if (c != null) scanChunk(c);
-			}
-			dirty.clear();
-		}
 	}
 
 	@Override

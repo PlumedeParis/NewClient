@@ -99,10 +99,13 @@ public final class ZeroClient implements ClientModInitializer {
 			long t0 = System.nanoTime();
 			ChunkScanner.tick();
 			Perf.scan(System.nanoTime() - t0);
+			Perf.tick("_scanner", System.nanoTime() - t0);
 			for (Module m : ModuleManager.all()) {
 				if (m.isEnabled()) {
 					try {
+						long tt = System.nanoTime();
 						m.onTick();
+						Perf.tick(m.getName(), System.nanoTime() - tt);
 					} catch (Exception e) {
 						LOGGER.error("Error ticking {}", m.getName(), e);
 					}
@@ -158,6 +161,7 @@ public final class ZeroClient implements ClientModInitializer {
 					long tm = System.nanoTime();
 					m.onRender3D(pt);
 					Perf.module(m.getName(), System.nanoTime() - tm);
+					Perf.r3d(m.getName(), System.nanoTime() - tm);
 				} catch (Exception e) {
 					LOGGER.error("Error rendering {}", m.getName(), e);
 				}
@@ -167,6 +171,7 @@ public final class ZeroClient implements ClientModInitializer {
 		long tf = System.nanoTime();
 		Render3D.flush(buffers);
 		Perf.flush(System.nanoTime() - tf);
+		Perf.r3d("_flush", System.nanoTime() - tf);
 		Perf.render(System.nanoTime() - t0);
 	}
 }

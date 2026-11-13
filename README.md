@@ -81,6 +81,21 @@ X-Ray works with vanilla rendering, Fabric API's renderer (Indigo) and **Sodium*
 
 ## Interface
 
+### 2.3: performance
+
+Measured with every module on, in a real generated world (slow software-rendering test machine):
+
+| | Before | After |
+|---|---|---|
+| ZERØ's cost per tick while chunks load | 15.6 ms | 4.9 ms |
+| Cost per tick standing still | 9.9 ms | 1.9 ms |
+| Cost per tick while travelling | 14.4 ms | 3.5 ms |
+| Worst single stutter | 280 ms | ~28 ms |
+
+* Chunk re-scans after block changes go through the scanner's time budget, at most once every 2.5 s per chunk, and only for changes that matter (not grass, water, leaves).
+* SusChunk skips every 16×16×16 section with nothing to read (11 ms → 0.3 ms per chunk); TunnelFinder remembers block types, skips solid rock and the sky; SafeMiner's path search is capped at 0.7 ms per tick; SeedOreFinder spreads its checks over time.
+* `ZERO_PERF=1 ./gradlew runClientGameTest` prints the cost of every module.
+
 ### 2.2: premium look + base confidence
 
 * **Base confidence**: every place gets one number, "how likely is this a base", with the reasons: `89% Base ✔ Player spawner ✔ 5 storage blocks ✔ Buried: 3 kinds of base blocks`. Different kinds of clues combine (two medium clues beat one), the same clue repeated counts once, and it never claims 100%. Shown on BaseRadar's card (confidence ring), on beams, in the look label, in alerts and on DonutHunter's leads. BaseRadar alerts at 70% by default.

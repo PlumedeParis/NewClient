@@ -54,18 +54,11 @@ public abstract class ChunkFinderModule<R> extends ScanningModule {
 
 	@Override
 	public void onBlockChanged(LevelChunk chunk, BlockPos pos, BlockState oldState, BlockState newState) {
-		if (relevant(oldState, newState)) dirty.add(chunk.getPos().toLong());
+		if (relevant(oldState, newState)) dev.zero.scan.ChunkScanner.markDirty(this, chunk.getPos().toLong());
 	}
 
 	@Override
 	public void onTick() {
-		if (++tick % 20 == 0 && !dirty.isEmpty()) {
-			for (long key : dirty.toLongArray()) {
-				LevelChunk c = mc.level.getChunkSource().getChunk(ChunkPos.getX(key), ChunkPos.getZ(key), ChunkStatus.FULL, false);
-				if (c != null) scanChunk(c);
-			}
-			dirty.clear();
-		}
 	}
 
 	@Override

@@ -27,6 +27,37 @@ public final class ChunkScanner {
 
 	private ChunkScanner() {}
 
+	/** Chunks whose blocks changed, waiting to be looked at again (per module). */
+	private static final Map<ScanningModule, LongLinkedOpenHashSet> DIRTY = new IdentityHashMap<>();
+	/** When each (module, chunk) was last scanned: a chunk that keeps changing is re-scanned at most every few seconds. */
+	private static final Map<ScanningModule, it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap> LAST = new IdentityHashMap<>();
+	private static final long RESCAN_COOLDOWN_MS = 2500;
+	private static int tickCount;
+
+	/**
+	 * A block changed in this chunk: re-scan it soon, inside the scanner's time budget
+	 * (never immediately, never the same chunk over and over).
+	 */
+	public static void markDirty(ScanningModule module, long chunkKey) {
+		DIRTY.computeIfAbsent(module, k -> new LongLinkedOpenHashSet()).add(chunkKey);
+	}
+
+	private static void promoteDirty() {
+		long now = System.currentTimeMillis();
+		for (Map.Entry<ScanningModule, LongLinkedOpenHashSet> e : DIRTY.entrySet()) {
+			LongLinkedOpenHashSet d = e.getValue();
+			if (d.isEmpty() || !e.getKey().isEnabled()) continue;
+			var last = LAST.get(e.getKey());
+			var it = d.iterator();
+			while (it.hasNext()) {
+				long key = it.nextLong();
+				if (last != null && now - last.get(key) < RESCAN_COOLDOWN_MS) continue; // too soon: stays waiting
+				if (LOADED.contains(key)) QUEUES.computeIfAbsent(e.getKey(), k -> new LongLinkedOpenHashSet()).add(key);
+				it.remove();
+			}
+		}
+	}
+
 	public static void onChunkLoad(ClientLevel level, LevelChunk chunk) {
 		long key = chunk.getPos().toLong();
 		LOADED.add(key);
@@ -40,6 +71,8 @@ public final class ChunkScanner {
 		long key = pos.toLong();
 		LOADED.remove(key);
 		for (Map.Entry<ScanningModule, LongLinkedOpenHashSet> e : QUEUES.entrySet()) e.getValue().remove(key);
+		for (LongLinkedOpenHashSet d : DIRTY.values()) d.remove(key);
+		for (var l : LAST.values()) l.remove(key);
 		for (Module m : ModuleManager.all()) {
 			if (m instanceof ScanningModule s && s.isEnabled()) s.onChunkUnload(pos);
 		}
@@ -59,6 +92,8 @@ public final class ChunkScanner {
 	public static void onWorldChange() {
 		LOADED.clear();
 		QUEUES.clear();
+		DIRTY.clear();
+		LAST.clear();
 		for (Module m : ModuleManager.all()) m.onWorldLeave();
 	}
 
@@ -95,7 +130,9 @@ public final class ChunkScanner {
 	public static void tick() {
 		Minecraft mc = Minecraft.getInstance();
 		ClientLevel level = mc.level;
-		if (level == null || QUEUES.isEmpty()) return;
+		if (level == null) return;
+		if (++tickCount % 5 == 0 && !DIRTY.isEmpty()) promoteDirty();
+		if (QUEUES.isEmpty()) return;
 		long start = System.nanoTime();
 		// Time budget from the Client panel; halved automatically while FPS is low.
 		double ms = dev.zero.config.ClientSettings.SCAN_BUDGET.get();
@@ -111,12 +148,16 @@ public final class ChunkScanner {
 				LevelChunk chunk = level.getChunkSource().getChunk(ChunkPos.getX(key), ChunkPos.getZ(key), ChunkStatus.FULL, false);
 				if (chunk != null) {
 					try {
+						long ts = System.nanoTime();
 						e.getKey().scanChunk(chunk);
+						dev.zero.util.Perf.tick("scan:" + e.getKey().getName(), System.nanoTime() - ts);
 					} catch (Exception ex) {
 						// A chunk changing mid-scan must never crash the game.
 					}
+					LAST.computeIfAbsent(e.getKey(), k -> new it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap()).put(key, System.currentTimeMillis());
 				}
 				worked = true;
+				if (System.nanoTime() - start >= budget) break; // stop mid-round too: one slow scan must not drag the others in
 			}
 		}
 	}

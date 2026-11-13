@@ -229,7 +229,7 @@ public final class Render2D {
 		float gs = (float) Minecraft.getInstance().getWindow().getGuiScale();
 		int tex = ShapeTextures.SIZE;
 		int size = Math.max(2, Math.round(thickness * gs));
-		int steps = Math.max(48, (int) (radius * gs * 1.6f));
+		int steps = Math.max(28, (int) (radius * gs * 0.9f));
 		g.pose().pushMatrix();
 		g.pose().translate(cx, cy);
 		g.pose().scale(1f / gs, 1f / gs);

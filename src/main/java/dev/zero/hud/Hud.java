@@ -83,7 +83,9 @@ public final class Hud {
 		for (Module m : ModuleManager.all()) {
 			if (m.isEnabled()) {
 				try {
+					long th = System.nanoTime();
 					m.onRender2D(g, pt);
+					dev.zero.util.Perf.hud(m.getName(), System.nanoTime() - th);
 				} catch (Exception ignored) {
 				}
 			}
