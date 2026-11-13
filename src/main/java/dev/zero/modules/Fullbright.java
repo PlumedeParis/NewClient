@@ -19,6 +19,8 @@ public class Fullbright extends Module {
 	/** Night-vision factor to force, 0 when off. */
 	public static float factor() {
 		Fullbright f = ModuleManager.fullbright;
-		return f != null && f.isEnabled() ? f.strength.getFloat() : 0f;
+		float own = f != null && f.isEnabled() ? f.strength.getFloat() : 0f;
+		// X-Ray's "Fullbright" option uses the same lightmap path, so it also works with Sodium's mesher
+		return XRay.fullbright() ? 1f : own;
 	}
 }

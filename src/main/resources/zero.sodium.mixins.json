@@ -1,0 +1,14 @@
+{
+	"required": false,
+	"minVersion": "0.8",
+	"package": "dev.zero.mixin.sodium",
+	"compatibilityLevel": "JAVA_21",
+	"plugin": "dev.zero.mixin.sodium.SodiumPlugin",
+	"client": [
+		"SodiumCullingMixin",
+		"SodiumMeshingMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}

@@ -11,7 +11,7 @@
 	"entrypoints": {
 		"client": ["dev.zero.ZeroClient"]
 	},
-	"mixins": ["zero.mixins.json"],
+	"mixins": ["zero.mixins.json", "zero.sodium.mixins.json"],
 	"depends": {
 		"fabricloader": ">=0.17.0",
 		"minecraft": "~1.21.11",

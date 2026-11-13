@@ -20,7 +20,7 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 | **BlockESP** | Render | Highlights chosen blocks through walls: per-block colors, box/outline/fill, tracers, labels. Searchable block picker with presets. **Exposed Only** mode ignores anti-xray fake ores. |
 | **StorageESP** | Render | Chests (double chests merged), trapped chests, ender chests, shulkers in their dye color, barrels, hoppers, furnaces, dispensers, brewing stands, chest minecarts / chest boats. Per-type colors, tracers and per-chunk "N storage" counts. |
 | **Fullbright** | Render | See in the dark: raises your local lightmap like night vision (Strength setting). No potion effect, nothing sent. |
-| **XRay** | Render | Hides everything except your chosen blocks, with fullbright. Works with Fabric API's renderer. See the anti-xray note below. |
+| **XRay** | Render | Hides everything except your chosen blocks, with fullbright. Works with vanilla, Fabric API's renderer and Sodium. See the anti-xray note below. |
 | **SpawnerESP** | Render | Every mob spawner and trial spawner through walls, colored by mob type (zombie, skeleton, blaze, pig...), with labels, tracers and an optional 16-block activation-range box. |
 | **Crosshair** | Render | Custom pixel crosshair with an editor: paint on a 15x15 grid (left paint / right erase), mirror X/Y, 7 presets, color swatches, outline, scale, target color and attack-cooldown bar. Live preview on light and dark backgrounds. |
 | **Freecam** | Render | Moves only the camera. Your player stays still and sends exactly what an idle player sends. Attack, use and pick-block are blocked while it is on. |
@@ -77,7 +77,7 @@ Install: **Fabric Loader** (0.17+) and **Fabric API** for **1.21.11**, put the `
 
 What *does* work: blocks touching air, water or lava must be sent truthfully. With **Exposed Only** (on by default), X-Ray and BlockESP show only those, which means **real** ores in caves, ravines, lava lakes and tunnels, with all the fake noise filtered out.
 
-X-Ray hooks vanilla / Fabric API (Indigo) chunk meshing; it does not work if **Sodium** is installed.
+X-Ray works with vanilla rendering, Fabric API's renderer (Indigo) and **Sodium** (tested with Sodium 0.8.14 for 1.21.11). The Sodium hooks are optional: they only load when Sodium is installed.
 
 ## Interface
 
@@ -129,6 +129,7 @@ Everything is saved to `.minecraft/config/zero/` (`config.json`, plus `finds/<se
 ```
 ./gradlew build               # -> build/libs/zero-<version>.jar
 ./gradlew runClientGameTest   # headless in-game tests: features + seed-prediction accuracy
+./gradlew runClientGameTest -PextraMods=/path/to/sodium.jar   # same tests with Sodium installed
 ```
 
 Requires JDK 21. The screenshots above come from that automated test (small window, software rendering).

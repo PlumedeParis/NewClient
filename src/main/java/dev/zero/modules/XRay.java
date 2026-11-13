@@ -120,6 +120,13 @@ public class XRay extends Module {
 
 	public static boolean isActive() { return active; }
 
+	private static final java.util.concurrent.atomic.AtomicLong SODIUM_HOOKS = new java.util.concurrent.atomic.AtomicLong();
+
+	/** Called by the Sodium meshing hook (proves it is wired; used by the in-game test). */
+	public static void sodiumHook() { SODIUM_HOOKS.incrementAndGet(); }
+
+	public static long sodiumHooks() { return SODIUM_HOOKS.get(); }
+
 	public static boolean fullbright() { return active && bright; }
 
 	public static boolean renderFluids() { return showFluids; }
