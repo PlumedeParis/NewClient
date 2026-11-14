@@ -82,7 +82,8 @@ public class UpdateScreen extends Screen {
 		Render2D.text(g, "You have " + Updater.current(), x + 46, y + 25, Theme.SUBTEXT, false);
 
 		// body
-		int top = y + 42, bottom = y + h - 54;
+		boolean bar = st == Updater.State.DOWNLOADING || st == Updater.State.READY;
+		int top = y + 42, bottom = y + h - (bar ? 66 : 40);
 		if (st == Updater.State.FAILED) {
 			Render2D.text(g, Render2D.trim(Updater.error(), w - 24), x + 12, top + 4, 0xFFFF8A8A, false);
 			Render2D.text(g, "Your game is not affected. You can turn checks off in Client → General.", x + 12, top + 18, Theme.SUBTEXT, false);
