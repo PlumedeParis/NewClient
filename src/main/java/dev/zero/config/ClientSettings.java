@@ -25,6 +25,12 @@ public final class ClientSettings {
 	public static final KeybindSetting GUI_KEY = add(new KeybindSetting("GUI Key", "Opens the ClickGUI", GLFW.GLFW_KEY_RIGHT_SHIFT));
 	public static final KeybindSetting HIDE_KEY = add(new KeybindSetting("Hide All Key", "Hides everything ZER\u00D8 draws (ESP, HUD, alerts) until pressed again. Modules keep running", GLFW.GLFW_KEY_UNKNOWN));
 	public static final EnumSetting<dev.zero.gui.IntroScreen.Mode> INTRO = add(new EnumSetting<>("Intro", "6-second intro the first time you open the GUI after joining a world / server (click or any key skips it)", dev.zero.gui.IntroScreen.Mode.ONCE_PER_JOIN));
+	public static final EnumSetting<dev.zero.update.Updater.Mode> UPDATES = add(new EnumSetting<>("Updates", "Ask = check github.com for a new ZER\u00D8 when the game starts and ask you. Off = never check. (Only talks to GitHub, never to the server you play on)", dev.zero.update.Updater.Mode.ASK));
+	public static final dev.zero.setting.ButtonSetting CHECK_UPDATES = add(new dev.zero.setting.ButtonSetting("Check Now", "Look for a new version now", "\u27F3 Check for updates", () -> {
+		dev.zero.update.Updater.check();
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.setScreen(new dev.zero.gui.UpdateScreen(mc.screen));
+	}));
 	public static final BoolSetting LOOK_INFO = add(new BoolSetting("Look Info", "Label next to the crosshair naming the highlighted thing you aim at", true));
 	public static final BoolSetting STREAMER = add(new BoolSetting("Hide Coords", "Hide coordinates on the HUD (streamer mode)", false));
 

@@ -20,5 +20,6 @@ public abstract class TitleScreenMixin extends Screen {
 	@Inject(method = "render", at = @At("TAIL"))
 	private void zero$branding(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
 		TitleBranding.render(graphics, this.width);
+		dev.zero.update.Updater.onTitleScreen();
 	}
 }

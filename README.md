@@ -4,6 +4,8 @@ A **strictly client-side** utility client for **Fabric 1.21.11**, made for findi
 
 > **Zero server interaction.** ZERØ never sends a packet, never registers a network channel and never interacts with the server.
 > It only reads what the server already sends to every client (chunks, entities, tab list) and draws on your screen.
+>
+> The only internet connection ZERØ makes is the optional **update check** to github.com (this project's releases). It never talks to the server you play on, so no anticheat can see it, and you can turn it off (Client → General → Updates: Off).
 
 ## Download
 
@@ -80,6 +82,20 @@ What *does* work: blocks touching air, water or lava must be sent truthfully. Wi
 X-Ray works with vanilla rendering, Fabric API's renderer (Indigo) and **Sodium** (tested with Sodium 0.8.14 for 1.21.11). The Sodium hooks are optional: they only load when Sodium is installed.
 
 ## Interface
+
+### 2.4: updater
+
+When the game starts, ZERØ checks this repository's latest release in the background. If there is a newer version, the title screen shows what's new and asks:
+
+* **Update now**: downloads it, closes Minecraft, installs it and opens Minecraft again (if your launcher lets a game be restarted this way; otherwise just start it again).
+* **Next launch**: downloads it now and installs it when you quit Minecraft.
+* **Later** (ask again next time) or **Skip** this version.
+
+Every download is checked against the SHA-256 fingerprint published with the release before anything is installed. The swap happens after Minecraft has closed (a running jar can't be replaced on Windows), and the first launch of the new version shows a **What's new** screen. Client → General: **Updates** (Ask / Off) and **Check for updates**.
+
+| What's new | Update available |
+|---|---|
+| ![](docs/whats_new.png) | ![](docs/update_available.png) |
 
 ### 2.3: performance
 

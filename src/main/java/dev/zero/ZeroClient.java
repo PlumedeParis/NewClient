@@ -46,6 +46,7 @@ public final class ZeroClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		ModuleManager.init();
 		ConfigManager.load();
+		dev.zero.update.Updater.init();
 
 		ClientTickEvents.END_CLIENT_TICK.register(ZeroClient::tick);
 		ClientChunkEvents.CHUNK_LOAD.register(ChunkScanner::onChunkLoad);

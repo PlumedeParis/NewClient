@@ -34,6 +34,19 @@ jobs:
           echo "path=$JAR" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$JAR")" >> "$GITHUB_OUTPUT"
 
+      - name: Update info (version.json for the in-game updater)
+        run: |
+          V=$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '\r ')
+          SHA=$(sha256sum "${{ steps.jar.outputs.path }}" | cut -d' ' -f1)
+          python3 - "$V" "build-${{ github.run_number }}" "${{ steps.jar.outputs.name }}" "$SHA" > build/libs/version.json <<'PY'
+          import json, re, sys
+          version, tag, jar, sha = sys.argv[1:5]
+          text = open('src/main/resources/assets/zero/changelog.md', encoding='utf-8').read()
+          m = re.search(r'^## ' + re.escape(version) + r'\s*$(.*?)(?=^## |\Z)', text, re.S | re.M)
+          print(json.dumps({"version": version, "tag": tag, "jar": jar, "sha256": sha, "changelog": m.group(1).strip() if m else ""}))
+          PY
+          cat build/libs/version.json
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -53,5 +66,9 @@ jobs:
             Install: Fabric Loader 0.17+ and Fabric API for 1.21.11, then drop `${{ steps.jar.outputs.name }}` into `.minecraft/mods`.
             Press **Right Shift** in game to open the GUI.
 
+            Already have ZERØ 2.4.0 or newer? It updates itself: you'll be asked in game.
+
             Built from `${{ github.sha }}` on `${{ github.ref_name }}`.
-          files: ${{ steps.jar.outputs.path }}
+          files: |
+            ${{ steps.jar.outputs.path }}
+            build/libs/version.json
