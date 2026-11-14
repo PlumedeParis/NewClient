@@ -1,7 +1,9 @@
+## 2.4.1
+- The updater never installs anything: it shows "ZERØ x.y.z is available" with what's new, and **Go see** opens the GitHub page, **Skip** closes it for now, **Don't show again** hides that version only (the next version asks again)
+
 ## 2.4.0
-- **Updater**: ZERØ checks GitHub for new versions when the game starts and asks you: update now (closes, updates and reopens Minecraft), on next launch, later, or skip this version
-- Downloads are checked with a SHA-256 fingerprint before they are installed
-- This "What's new" screen after every update
+- Update check: ZERØ looks at GitHub when the game starts and tells you when a new version exists
+- This "What's new" screen the first time you start a new version
 - Client → General → Updates turns update checks off
 
 ## 2.3.0

@@ -5,7 +5,7 @@ A **strictly client-side** utility client for **Fabric 1.21.11**, made for findi
 > **Zero server interaction.** ZERØ never sends a packet, never registers a network channel and never interacts with the server.
 > It only reads what the server already sends to every client (chunks, entities, tab list) and draws on your screen.
 >
-> The only internet connection ZERØ makes is the optional **update check** to github.com (this project's releases). It never talks to the server you play on, so no anticheat can see it, and you can turn it off (Client → General → Updates: Off).
+> The only internet connection ZERØ makes is the optional **update check** to github.com (this project's releases): it reads one small file and tells you if a new version exists; it never downloads or installs anything. It never talks to the server you play on, so no anticheat can see it, and you can turn it off (Client → General → Updates: Off).
 
 ## Download
 
@@ -83,15 +83,15 @@ X-Ray works with vanilla rendering, Fabric API's renderer (Indigo) and **Sodium*
 
 ## Interface
 
-### 2.4: updater
+### 2.4: update notice
 
-When the game starts, ZERØ checks this repository's latest release in the background. If there is a newer version, the title screen shows what's new and asks:
+When the game starts, ZERØ looks at this repository's latest release in the background. If there is a newer version, the title screen shows **"ZERØ x.y.z is available"** with what's new, and three buttons:
 
-* **Update now**: downloads it, closes Minecraft, installs it and opens Minecraft again (if your launcher lets a game be restarted this way; otherwise just start it again).
-* **Next launch**: downloads it now and installs it when you quit Minecraft.
-* **Later** (ask again next time) or **Skip** this version.
+* **Go see**: opens the download page on GitHub in your browser.
+* **Skip**: closes it now; it asks again next time you start Minecraft.
+* **Don't show again**: hides **that version only**. The next version asks again.
 
-Every download is checked against the SHA-256 fingerprint published with the release before anything is installed. The swap happens after Minecraft has closed (a running jar can't be replaced on Windows), and the first launch of the new version shows a **What's new** screen. Client → General: **Updates** (Ask / Off) and **Check for updates**.
+**ZERØ never downloads or installs anything by itself.** You install the new jar yourself, and the first launch of a new version shows a **What's new** screen. Client → General: **Updates** (Ask / Off) and **Check for updates**. Each release also publishes the jar's SHA-256 in `version.json` if you want to verify your download.
 
 | What's new | Update available |
 |---|---|

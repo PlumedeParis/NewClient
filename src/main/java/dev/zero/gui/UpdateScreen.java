@@ -40,17 +40,15 @@ public class UpdateScreen extends Screen {
 	private List<Button> buttonsFor(Updater.State s) {
 		return switch (s) {
 			case AVAILABLE -> List.of(
-				new Button("Update now", "Closes Minecraft, installs the update and opens Minecraft again", Theme.accent(), () -> Updater.download(true)),
-				new Button("Next launch", "Downloads now, installs when you quit Minecraft", 0xFF3A3A4E, () -> Updater.download(false)),
-				new Button("Later", "Ask me again next time", 0xFF2A2A38, this::onClose),
-				new Button("Skip", "Don't ask again for this version", 0xFF2A2A38, () -> {
-					Updater.skip(Updater.info().version());
+				new Button("Go see", "Opens the download page on GitHub in your browser", Theme.accent(), () -> {
+					Updater.openPage();
+					onClose();
+				}),
+				new Button("Skip", "Close this now, ask again next time you start Minecraft", 0xFF3A3A4E, this::onClose),
+				new Button("Don't show again", "Hide this version only. The next version asks again", 0xFF2A2A38, () -> {
+					Updater.hide(Updater.info().version());
 					onClose();
 				}));
-			case DOWNLOADING -> List.of(new Button("Hide", "The download continues in the background", 0xFF2A2A38, this::onClose));
-			case READY -> List.of(
-				new Button("Restart now", "Closes Minecraft, installs the update and opens Minecraft again", Theme.accent(), () -> Updater.download(true)),
-				new Button("OK", "It installs when you quit Minecraft", 0xFF2A2A38, this::onClose));
 			case FAILED -> List.of(new Button("Try again", "", Theme.accent(), Updater::check), new Button("Close", "", 0xFF2A2A38, this::onClose));
 			case UP_TO_DATE -> List.of(new Button("OK", "", Theme.accent(), this::onClose));
 			default -> List.of(new Button("Close", "", 0xFF2A2A38, this::onClose));
@@ -79,11 +77,10 @@ public class UpdateScreen extends Screen {
 			default -> info == null ? "ZERØ update" : "ZERØ " + info.version() + " is available";
 		};
 		Render2D.text(g, "§l" + title, x + 46, y + 13, Theme.TEXT, false);
-		Render2D.text(g, "You have " + Updater.current(), x + 46, y + 25, Theme.SUBTEXT, false);
+		Render2D.text(g, "You have " + Updater.current() + "  \u2022  nothing is installed automatically", x + 46, y + 25, Theme.SUBTEXT, false);
 
 		// body
-		boolean bar = st == Updater.State.DOWNLOADING || st == Updater.State.READY;
-		int top = y + 42, bottom = y + h - (bar ? 66 : 40);
+		int top = y + 42, bottom = y + h - 40;
 		if (st == Updater.State.FAILED) {
 			Render2D.text(g, Render2D.trim(Updater.error(), w - 24), x + 12, top + 4, 0xFFFF8A8A, false);
 			Render2D.text(g, "Your game is not affected. You can turn checks off in Client → General.", x + 12, top + 18, Theme.SUBTEXT, false);
@@ -100,16 +97,6 @@ public class UpdateScreen extends Screen {
 			g.disableScissor();
 		} else if (st == Updater.State.UP_TO_DATE) {
 			Render2D.text(g, "You have the latest version. Enjoy!", x + 12, top + 4, Theme.SUBTEXT, false);
-		}
-
-		// progress
-		if (st == Updater.State.DOWNLOADING || st == Updater.State.READY) {
-			float p = st == Updater.State.READY ? 1 : Updater.progress();
-			int by = y + h - 46;
-			Render2D.roundedRect(g, x + 12, by, w - 24, 5, 2, 0xFF23232E);
-			if (p > 0) Render2D.roundedRect(g, x + 12, by, Math.max(5, (int) ((w - 24) * p)), 5, 2, accent);
-			String s = st == Updater.State.READY ? "✔ Downloaded and verified — installs when you quit Minecraft" : "Downloading… " + Math.round(p * 100) + "%";
-			Render2D.text(g, s, x + 12, by - 11, st == Updater.State.READY ? 0xFF4ADE80 : Theme.SUBTEXT, false);
 		}
 
 		// buttons

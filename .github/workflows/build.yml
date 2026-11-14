@@ -37,7 +37,7 @@ jobs:
       - name: Update info (version.json for the in-game updater)
         run: |
           V=$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '\r ')
-          SHA=$(sha256sum "${{ steps.jar.outputs.path }}" | cut -d' ' -f1)
+          SHA=$(sha256sum "${{ steps.jar.outputs.path }}" | cut -d' ' -f1)  # published for people who want to check their download
           python3 - "$V" "build-${{ github.run_number }}" "${{ steps.jar.outputs.name }}" "$SHA" > build/libs/version.json <<'PY'
           import json, re, sys
           version, tag, jar, sha = sys.argv[1:5]
@@ -66,7 +66,7 @@ jobs:
             Install: Fabric Loader 0.17+ and Fabric API for 1.21.11, then drop `${{ steps.jar.outputs.name }}` into `.minecraft/mods`.
             Press **Right Shift** in game to open the GUI.
 
-            Already have ZERØ 2.4.0 or newer? It updates itself: you'll be asked in game.
+            Already have ZERØ 2.4.0 or newer? It tells you in game when a new version is out. You install the jar yourself.
 
             Built from `${{ github.sha }}` on `${{ github.ref_name }}`.
           files: |
